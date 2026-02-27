@@ -1,0 +1,83 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mirror-heart-backend
+
+  # 数据库配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/mirrot_heart_v2_2?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: YOUR_DATABASE_PASSWORD
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB      # 单个文件限制
+      max-request-size: 50MB   # 单次请求限制
+
+  # 邮件配置
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: YOUR_QQ_EMAIL
+    password: YOUR_QQ_EMAIL_AUTH_CODE
+    protocol: smtps
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    # 打印底层 SQL 执行记录
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath:mapper/**/*.xml
+
+# 自定义文件上传配置
+file:
+  # 存储路径 (请确保该目录存在，或程序有权限创建)
+  # Windows 示例: D:/mirror-heart/upload/
+  # Mac/Linux 示例: /data/mirror-heart/upload/
+  upload-path: D:/mirror-heart/upload/
+  # 访问前缀 (映射到 http://localhost:8080/files/...)
+  access-path: /files/
+
+# 讯飞星火大模型配置
+xfyun:
+  spark:
+    app-id: YOUR_XFYUN_APP_ID
+    api-key: YOUR_XFYUN_API_KEY
+    api-secret: YOUR_XFYUN_API_SECRET
+    host-url: wss://spark-api.xf-yun.com/x2
+    domain: spark-x
+
+logging:
+  level:
+    org.springframework.security: DEBUG # 🌟 开启安全框架的调试日志
+
+# 腾讯云COS
+tencent:
+  cos:
+    secretId: YOUR_TENCENT_COS_SECRET_ID
+    secretKey: YOUR_TENCENT_COS_SECRET_KEY
+    region: ap-guangzhou
+    bucketName: YOUR_BUCKET_NAME
+    baseUrl: https://YOUR_BUCKET_NAME.cos.ap-guangzhou.myqcloud.com/
