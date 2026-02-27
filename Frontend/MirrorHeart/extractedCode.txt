@@ -1,0 +1,5642 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/src/assets/logo.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MirrorHeart</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+export default defineConfig({
+  plugins: [
+    vue(),
+    AutoImport({
+      resolvers: [ElementPlusResolver()]
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()]
+    })
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
+  }
+})
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vite App</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+<script setup>
+import { ref, onBeforeMount, watch } from 'vue'
+import {
+  getNewPostService,
+  getHotPostService,
+  getNewPostServiceVisitor,
+  getHotPostServiceVisitor,
+  getNewDiaryService,
+  getNewDiaryServiceVisitor,
+  getPostDetailService,
+  likePostService
+} from '@/api/userCommunity.js'
+import { CirclePlus } from '@element-plus/icons-vue' 
+import { useUserStore } from '@/stores' 
+import postDrawer from '@/components/community/postDrawer.vue' 
+import postDetail from '@/components/community/postDetail.vue' 
+const userStore = useUserStore() 
+const token = userStore.basicUser.token 
+const currentIndex = ref('1') 
+const handleOpen = (selectedItemIndex) => {
+  currentIndex.value = selectedItemIndex
+}
+const backTop = () => {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth' 
+  })
+}
+let newPostPage = ref(0)
+const getNewPost = async (page) => {
+  if (!token) {
+    const res = await getNewPostServiceVisitor(page)
+    if (
+      Array.isArray(res.data.data.returnList) &&
+      res.data.data.returnList.length === 0
+    ) {
+      newPostPage.value--
+      ElMessage.error('暂无帖子')
+      return
+    }
+    ElMessage.success('获取最新帖子成功')
+    newPosts.value = res.data.data.returnList
+    backTop()
+  } else {
+    const res = await getNewPostService(token, page)
+    if (
+      Array.isArray(res.data.data.returnList) &&
+      res.data.data.returnList.length === 0
+    ) {
+      --newPostPage.value
+      ElMessage.error('暂无帖子,请稍后再试试哦！')
+      return
+    }
+    ElMessage.success('获取最新帖子成功')
+    newPosts.value = res.data.data.returnList
+    likeList.value = newPosts.value.map(() => false) 
+    backTop()
+  }
+}
+let hotPostPage = ref(0)
+const getHotPost = async (page) => {
+  if (!token) {
+    const res = await getHotPostServiceVisitor(page)
+    if (
+      Array.isArray(res.data.data.returnList) &&
+      res.data.data.returnList.length === 0
+    ) {
+      hotPostPage.value--
+      ElMessage.error('暂无帖子')
+      return
+    }
+    ElMessage.success('获取最热帖子成功')
+    newPosts.value = res.data.data.returnList
+    backTop()
+  } else {
+    const res = await getHotPostService(token, page)
+    if (
+      Array.isArray(res.data.data.returnList) &&
+      res.data.data.returnList.length === 0
+    ) {
+      hotPostPage.value--
+      ElMessage.error('暂无帖子')
+      return
+    }
+    ElMessage.success('获取最热帖子成功')
+    newPosts.value = res.data.data.returnList
+    likeList.value = newPosts.value.map(() => false) 
+    backTop()
+  }
+}
+const newPosts = ref(null)
+onBeforeMount(() => {
+  getNewPost(newPostPage.value)
+})
+watch(
+  () => userStore.isNew,
+  (newVal) => {
+    if (newVal === true) {
+      getNewPost(newPostPage.value)
+    } else {
+      getHotPost(hotPostPage.value)
+    }
+  }
+)
+const newDiaryPage = ref(0)
+const newDiary = ref(null)
+const isDiarySquare = ref(true)
+const getNewDiary = async (page) => {
+  if (!token) {
+    const res = await getNewDiaryServiceVisitor(page)
+    if (
+      Array.isArray(res.data.data.returnList) &&
+      res.data.data.returnList.length === 0
+    ) {
+      newDiaryPage.value--
+      ElMessage.error('暂无日记')
+      return
+    }
+    ElMessage.success('获取最新日记成功')
+    newDiary.value = res.data.data.returnList
+    backTop()
+  } else {
+    const res = await getNewDiaryService(token, page)
+    if (
+      Array.isArray(res.data.data.returnList) &&
+      res.data.data.returnList.length === 0
+    ) {
+      newDiaryPage.value--
+      ElMessage.error('暂无日记')
+      return
+    }
+    ElMessage.success('获取最新日记成功')
+    newDiary.value = res.data.data.returnList
+    backTop()
+  }
+}
+const getPostDrawer = ref(null)
+const message = ref('')
+const handleSend = (number) => {
+  if (!token) {
+    ElMessage.warning('登录后才可以发贴喔！')
+    userStore.setIsLogin(true)
+    return
+  }
+  getPostDrawer.value.openPostDrawer()
+  message.value = number
+}
+watch(currentIndex, (newVal) => {
+  if (newVal === '2') {
+    getNewDiary(newDiaryPage.value)
+  }
+})
+watch(isDiarySquare, (newVal) => {
+  if (newVal === true) {
+    getNewDiary(newDiaryPage.value)
+  }
+})
+const getPostDetail = ref(null)
+const postDetailData = ref({})
+const getPostDetailData = async (id) => {
+  const res = await getPostDetailService(token, id)
+  postDetailData.value = res.data.data
+  getPostDetail.value.openPostDetailDrawer()
+}
+const handlePostId = (id) => {
+  getPostDetailData(id)
+}
+const refreshNewPost = async () => {
+  const res = await getNewPostService(token, newPostPage.value)
+  newPosts.value = res.data.data.returnList
+}
+const refreshHotPost = async () => {
+  const res = await getHotPostService(token, hotPostPage.value)
+  newPosts.value = res.data.data.returnList
+}
+watch(
+  () => userStore.isRefreshNewPost,
+  (newVal) => {
+    if (newVal === true) {
+      refreshNewPost()
+      userStore.outIsRefreshNewPost()
+    }
+  }
+)
+watch(
+  () => userStore.isRefreshHotPost,
+  (newVal) => {
+    if (newVal === true) {
+      refreshHotPost()
+      userStore.outIsRefreshHotPost()
+    }
+  }
+)
+const likeList = ref([])
+const likePost = async (postId, index) => {
+  if (!token) {
+    ElMessage.warning('登录后才可以点赞喔！')
+    userStore.setIsLogin(true)
+    return
+  }
+  if (userStore.isNew) {
+    const res = await likePostService(token, postId)
+    likeList.value[index] = res.data.data.hasLike
+    userStore.setIsRefreshNewPost()
+    ElMessage.success(res.data.msg)
+  } else {
+    const res = await likePostService(token, postId)
+    userStore.setIsRefreshHotPost()
+    ElMessage.success(res.data.msg)
+  }
+}
+</script>
+<template>
+  <div class="communityContainer">
+    <el-backtop :right="350" :bottom="100" />
+    <div class="communitySocialBox">
+      <div class="headerNavBar">
+        <el-menu
+          :ellipsis="false"
+          @select="handleOpen"
+          :default-active="currentIndex"
+          mode="horizontal"
+        >
+          <el-menu-item index="1" style="font-size: 25px; background: #d6f7ff"
+            >Space广场</el-menu-item
+          >
+          <el-menu-item index="2" style="font-size: 25px; background: #d6f7ff"
+            >Myself日记</el-menu-item
+          >
+        </el-menu>
+      </div>
+      <!-- 注意这里，我们比较的是currentIndex.value -->
+      <div v-if="currentIndex === '1'" class="spaceSquareBox">
+        <div class="changePostState">
+          <div class="changeBox" style="margin-top: 4px">
+            <el-button
+              link
+              @click="userStore.setIsNew()"
+              :style="{ color: userStore.isNew ? '#409eff' : '#a8abb2' }"
+              style="font-size: 18px"
+              >最新</el-button
+            ><el-divider direction="vertical" />
+            <el-button
+              link
+              @click="userStore.outIsNew()"
+              :style="{ color: userStore.isNew ? '#a8abb2' : '#409eff' }"
+              style="font-size: 18px"
+              >最热</el-button
+            >
+          </div>
+          <el-affix :offset="140">
+            <el-button
+              type="primary"
+              :icon="CirclePlus"
+              size="large"
+              style="font-size: 18px"
+              @click="handleSend(1)"
+              >发布图文</el-button
+            >
+          </el-affix>
+        </div>
+        <div class="spaceSquare">
+          <li class="post" v-for="(item, index) in newPosts" :key="index">
+            <el-row>
+              <el-col :span="4" style="display: flex; justify-content: center"
+                ><div>
+                  <img
+                    v-if="newPosts"
+                    :src="item.userJsonObject.avatar"
+                    class="postAvatar"
+                  /></div
+              ></el-col>
+              <el-col :span="18"
+                ><div class="postContent">
+                  <span class="postTime">{{
+                    item.postJsonObject.postTime
+                  }}</span>
+                  <div class="contentBottom">
+                    <div class="postTitle">
+                      {{ item.postJsonObject.postTitle }}
+                    </div>
+                    <img
+                      class="postCoverImg"
+                      v-if="item.postJsonObject.postCoverImg"
+                      :src="item.postJsonObject.postCoverImg"
+                      style="width: 430px; border-radius: 8px; cursor: pointer"
+                      @click="handlePostId(item.postJsonObject.postId)"
+                    />
+                    <el-empty
+                      v-else
+                      style="width: 430px; height: 240px; cursor: pointer"
+                      description="暂无封面图"
+                      @click="handlePostId(item.postJsonObject.postId)"
+                    />
+                    <el-divider style="margin-bottom: 2px; width: 85%" />
+                    <div class="remarkBox">
+                      <span @click="likePost(item.postJsonObject.postId, index)"
+                        ><img
+                          :src="
+                            likeList[index]
+                              ? 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20_%E5%AE%9E%E5%BF%83%20(1).png'
+                              : 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20(1).png'
+                          "
+                          alt="点赞帖子"
+                        />{{ item.postJsonObject.postLikeNum }}</span
+                      >
+                      <el-divider
+                        direction="vertical"
+                        style="height: 100%"
+                      /><span
+                        ><img src="@/assets/评论.png" alt="" />{{
+                          item.postJsonObject.postCommentNum
+                        }}</span
+                      >
+                      <el-divider
+                        direction="vertical"
+                        style="height: 100%"
+                      /><span
+                        ><img src="@/assets/分享.png" alt="" />{{
+                          item.postJsonObject.postCommentNum
+                        }}</span
+                      >
+                    </div>
+                    <el-divider style="margin: 2px 0px; width: 85%" />
+                  </div>
+                </div>
+              </el-col>
+            </el-row>
+          </li>
+          <div class="paging" v-if="userStore.isNew">
+            <el-button
+              type="primary"
+              :disabled="newPostPage === 0"
+              @click="getNewPost(--newPostPage)"
+              >上一页</el-button
+            >
+            <el-button type="primary" @click="getNewPost(++newPostPage)"
+              >下一页</el-button
+            >
+          </div>
+          <div class="paging" v-if="!userStore.isNew">
+            <el-button
+              type="primary"
+              :disabled="hotPostPage === 0"
+              @click="getHotPost(--hotPostPage)"
+              >上一页</el-button
+            >
+            <el-button type="primary" @click="getHotPost(++hotPostPage)"
+              >下一页</el-button
+            >
+          </div>
+        </div>
+      </div>
+      <div v-else-if="currentIndex === '2'">
+        <div class="changePostState">
+          <div class="changeBox" style="margin-top: 4px">
+            <el-button
+              link
+              @click="isDiarySquare = true"
+              :style="{ color: isDiarySquare ? '#409eff' : '#a8abb2' }"
+              style="font-size: 18px"
+              >最新</el-button
+            ><el-divider direction="vertical" />
+            <el-button
+              link
+              @click="isDiarySquare = false"
+              :style="{ color: isDiarySquare ? '#a8abb2' : '#409eff' }"
+              style="font-size: 18px"
+              >我的日记</el-button
+            >
+          </div>
+          <el-affix :offset="140">
+            <el-button
+              type="primary"
+              :icon="CirclePlus"
+              size="large"
+              style="font-size: 18px"
+              @click="handleSend(2)"
+              >发布日记</el-button
+            >
+          </el-affix>
+        </div>
+        <div class="spaceSquare">
+          <li class="post" v-for="(item, index) in newDiary" :key="index">
+            <el-row>
+              <el-col :span="4" style="display: flex; justify-content: center"
+                ><div>
+                  <img
+                    v-if="newPosts"
+                    :src="item.userJsonObject.avatar"
+                    class="postAvatar"
+                  /></div
+              ></el-col>
+              <el-col :span="18"
+                ><div class="postContent">
+                  <span class="postTime">{{
+                    item.postJsonObject.postTime
+                  }}</span>
+                  <div class="contentBottom">
+                    <div class="postTitle">
+                      {{ item.postJsonObject.diaryTitle }}
+                    </div>
+                    <img
+                      class="postCoverImg"
+                      v-if="item.postJsonObject.diaryCoverImg"
+                      :src="item.postJsonObject.diaryCoverImg"
+                      style="width: 550px; border-radius: 8px; margin-top: 50px"
+                    />
+                    <el-empty
+                      v-else
+                      style="width: 430px; height: 240px"
+                      description="暂无封面图"
+                    />
+                  </div>
+                </div>
+              </el-col>
+            </el-row>
+          </li>
+          <div class="paging">
+            <el-button
+              type="primary"
+              :disabled="newDiaryPage === 0"
+              @click="getNewDiary(--newDiaryPage)"
+              >上一页</el-button
+            >
+            <el-button type="primary" @click="getNewDiary(++newDiaryPage)"
+              >下一页</el-button
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <postDetail ref="getPostDetail" :message="postDetailData"></postDetail>
+  <postDrawer ref="getPostDrawer" :message="message"></postDrawer>
+</template>
+<style scoped>
+.communityContainer {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 770px;
+  padding: 10px 40px 25px 40px;
+  background: linear-gradient(#d6f7ff, #fdfae8);
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.communitySocialBox {
+  width: 900px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.headerNavBar {
+  display: flex;
+  justify-content: space-around;
+  padding: 0 50px;
+  height: 59px;
+  width: 900px;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+.changePostState {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  cursor: pointer;
+  padding-left: 10px;
+  box-sizing: border-box;
+}
+.spaceSquare {
+  width: 750px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+.spaceSquare .post {
+  width: 100%;
+  height: 400px;
+  padding: 15px 15px 15px 0;
+  background-color: #fff;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  list-style: none;
+  box-sizing: border-box;
+  transition: all 0.3s;
+}
+.spaceSquare .post:hover {
+  scale: 0.95;
+}
+.spaceSquare .post .postAvatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin-top: 15px;
+}
+.spaceSquare .post .postContent {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.spaceSquare .post .postContent .contentBottom {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+.spaceSquare .post .postContent .postTitle {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+.spaceSquare .post .postContent .postCoverImg {
+  width: 385px;
+  height: 240px;
+  margin-top: 10px;
+}
+.spaceSquare .post .postContent .remarkBox {
+  display: flex;
+  width: 85%;
+  height: 40px;
+  cursor: pointer;
+}
+.spaceSquare .post .postContent .remarkBox span {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  font-size: 24px;
+}
+.spaceSquare .post .postContent .remarkBox span img {
+  height: 65%;
+  margin-right: 10px;
+}
+</style>
+<script lang="ts" setup>
+import {
+  getRecommendListService,
+  getRecommendListServiceForVisitor,
+  likeRecommendService 
+} from '@/api/homePage'
+import { ElMessage } from 'element-plus' 
+import { useUserStore } from '@/stores' 
+import { ref, onBeforeMount, onMounted, nextTick, watch } from 'vue'
+import recommendBox from '@/components/homePage/RecommendBox.vue'
+import recommendBoxTop from '@/components/homePage/RecommendBoxTop.vue'
+import contentDetailsBox from '@/components/homePage/ContentDetailsBox.vue'
+const userStore = useUserStore() 
+const token = userStore.basicUser.token 
+const date = ref('')
+const lrcDoc = ref()
+const lyrics = ref([])
+function parseLrc(lrcContent) {
+  const regex = /^\[(\d{2}:\d{2})\]\s*(.*)$/gm
+  const lyricsArray = []
+  let match
+  while ((match = regex.exec(lrcContent)) !== null) {
+    const timestamp = match[1] 
+    const text = match[2].trim() 
+    const minutes = parseInt(timestamp.split(':')[0], 10)
+    const seconds = parseInt(timestamp.split(':')[1], 10)
+    const time = minutes * 60 + seconds
+    lyricsArray.push({ time, text })
+  }
+  return lyricsArray
+}
+const lyricIndex = ref(0)
+const rotationAngle = ref(0)
+const recommendList = ref(null)
+const currentDate = new Date()
+const day = currentDate.getDate()
+const year = currentDate.toLocaleString('en-US', { year: 'numeric' })
+const month = currentDate.toLocaleString('en-US', { month: 'long' })
+const nowMonth = currentDate.getMonth() + 1
+const nowDate = `${year}-${nowMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
+const articleContent = ref('') 
+const parsedContent = ref('') 
+const getRecommendList = async () => {
+  if (!userStore.basicUser.token) {
+    const res = await getRecommendListServiceForVisitor()
+    recommendList.value = res.data.data
+    lrcDoc.value = res.data.data.music.songLyric
+    lyrics.value = parseLrc(lrcDoc.value) 
+    articleContent.value = recommendList.value.article.content 
+    updateParsedContent()
+  } else {
+    const res = await getRecommendListService(token, nowDate)
+    recommendList.value = res.data.data
+    date.value = nowDate
+    sentenceLike.value = recommendList.value.sentence.hasLike
+    musicLike.value = recommendList.value.music.hasLike
+    articleLike.value = recommendList.value.article.hasLike
+    bookLike.value = recommendList.value.book.hasLike
+    movieLike.value = recommendList.value.movie.hasLike
+    paintingLike.value = recommendList.value.painting.hasLike
+    lrcDoc.value = res.data.data.music.songLyric
+    lyrics.value = parseLrc(lrcDoc.value) 
+    articleContent.value = recommendList.value.article.content 
+    updateParsedContent()
+  }
+}
+onBeforeMount(() => {
+  getRecommendList()
+})
+const parseContent = (content) => {
+  return content
+    .split('\n') 
+    .map((item) => {
+      return `<p>${item.trim()}</p>`
+    })
+    .join('') 
+}
+const updateParsedContent = () => {
+  parsedContent.value = parseContent(articleContent.value)
+}
+const disabledDate = (time) => {
+  return time.getTime() > Date.now()
+}
+const searchRecommendList = async () => {
+  if (!userStore.basicUser.token) {
+    ElMessage.error('登录后才能查看历史推荐哦！')
+    userStore.setIsLogin()
+    return
+  } else if (date.value === '') {
+    ElMessage.error('请先选择日期再查看哦！')
+    return
+  } else {
+    const res = await getRecommendListService(token, date.value)
+    recommendList.value = res.data.data
+    sentenceLike.value = recommendList.value.sentence.hasLike
+    musicLike.value = recommendList.value.music.hasLike
+    articleLike.value = recommendList.value.article.hasLike
+    bookLike.value = recommendList.value.book.hasLike
+    movieLike.value = recommendList.value.movie.hasLike
+    paintingLike.value = recommendList.value.painting.hasLike
+    ElMessage.success('成功获取历史每日推荐')
+    lrcDoc.value = res.data.data.music.songLyric
+    lyrics.value = parseLrc(lrcDoc.value) 
+    clearInterval(musicTimer.value)
+    musicTimer.value = null
+    rotationAngle.value = 0
+    musicImg.value.style.transform = `rotate(${rotationAngle.value}deg)`
+    articleContent.value = recommendList.value.article.content 
+    updateParsedContent() 
+  }
+}
+const audioRef = ref(null)
+const musicTimer = ref(null)
+const musicImg = ref(null)
+const handlePlay = () => {
+  musicTimer.value = setInterval(() => {
+    rotationAngle.value += 1
+    musicImg.value.style.transform = `rotate(${rotationAngle.value}deg)`
+  }, 100)
+}
+const handlePause = () => {
+  clearInterval(musicTimer.value)
+  musicTimer.value = null
+}
+watch(recommendList, (newValue) => {
+  if (newValue) {
+    nextTick(() => {
+      if (audioRef.value) {
+        audioRef.value.addEventListener('play', handlePlay)
+        audioRef.value.addEventListener('pause', handlePause)
+      }
+    })
+  } else {
+    if (audioRef.value) {
+      audioRef.value.removeEventListener('play', handlePlay)
+      audioRef.value.removeEventListener('pause', handlePause)
+      if (musicTimer.value) {
+        clearInterval(musicTimer.value)
+        musicTimer.value = null
+      }
+    }
+  }
+})
+onMounted(() => {
+  if (recommendList.value) {
+    nextTick(() => {
+      if (audioRef.value) {
+        audioRef.value.addEventListener('play', handlePlay)
+        audioRef.value.addEventListener('pause', handlePause)
+      }
+    })
+  }
+})
+const binarySearchClosest = (arr, target) => {
+  let left = 0
+  let right = arr.length - 1
+  let closestTime = null 
+  if (arr[0].time === 0 && target >= 0) {
+    closestTime = 0
+  }
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+    if (arr[mid].time === target) {
+      return arr[mid].time 
+    } else if (arr[mid].time < target) {
+      if (closestTime === null || arr[mid].time > closestTime) {
+        closestTime = arr[mid].time
+      }
+      left = mid + 1
+    } else {
+      if (mid > 0 && arr[mid - 1].time <= target) {
+        closestTime = arr[mid - 1].time 
+      }
+      right = mid - 1
+    }
+  }
+  return closestTime
+}
+const handleTimeUpdate = (event) => {
+  const currentTime = event.target.currentTime
+  const currentLyric = lyrics.value.find(
+    (item) => item.time === binarySearchClosest(lyrics.value, currentTime)
+  )
+  lyricIndex.value = lyrics.value.indexOf(currentLyric)
+}
+watch(lyricIndex, (newValue) => {
+  if (newValue !== null) {
+    const lyricContainer = document.querySelector('.lyrics-container')
+    const activeLyric = lyricContainer.querySelector('.active')
+    if (activeLyric) {
+      activeLyric.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      })
+    }
+  }
+})
+const message = ref({}) 
+const DetailsBox = ref() 
+const handleContextDetails = (type) => {
+  switch (type) {
+    case 1:
+      message.value = recommendList.value.question
+      break
+    case 2:
+      message.value = recommendList.value.article
+      break
+    case 3:
+      message.value = recommendList.value.book
+      break
+    case 4:
+      message.value = recommendList.value.movie
+      break
+    case 5:
+      message.value = recommendList.value.painting
+      break
+  }
+  DetailsBox.value.openDrawer()
+}
+const sentenceLike = ref(null)
+const musicLike = ref(null)
+const articleLike = ref(null)
+const bookLike = ref(null)
+const movieLike = ref(null)
+const paintingLike = ref(null)
+const giveLike = async (type) => {
+  if (!userStore.basicUser.token) {
+    ElMessage.error('登录后才能点赞哦！')
+    userStore.setIsLogin()
+    return
+  } else {
+    const res = await likeRecommendService(token, type)
+    ElMessage.success(res.data.msg)
+    if (type === 'sentence') {
+      sentenceLike.value = res.data.data.hasLike
+    } else if (type === 'music') {
+      musicLike.value = res.data.data.hasLike
+    } else if (type === 'article') {
+      articleLike.value = res.data.data.hasLike
+    } else if (type === 'book') {
+      bookLike.value = res.data.data.hasLike
+    } else if (type === 'movie') {
+      movieLike.value = res.data.data.hasLike
+    } else if (type === 'painting') {
+      paintingLike.value = res.data.data.hasLike
+    }
+  }
+}
+</script>
+<template>
+  <div class="container">
+    <el-row class="firstRow">
+      <el-col :span="5" class="dateBox">
+        <div class="date">
+          <div class="dayBox">{{ day }}</div>
+          <div class="yearBox">
+            <span>{{ month }}</span>
+            <span>{{ year }}</span>
+          </div>
+        </div>
+        <div class="searchHistory">
+          <div class="block">
+            <span class="demonstration">查看历史每日推荐</span>
+            <el-date-picker
+              v-model="date"
+              type="date"
+              placeholder="点击选择日期"
+              :disabled-date="disabledDate"
+              size="large"
+              value-format="YYYY-MM-DD"
+            />
+            <el-button type="primary" size="large" @click="searchRecommendList"
+              >查看</el-button
+            >
+          </div>
+        </div>
+      </el-col>
+      <el-col
+        :span="9"
+        style="
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          align-items: center;
+          padding: 10px 0;
+        "
+      >
+        <el-tooltip
+          effect="dark"
+          content="点击可查看每日一问详情哦！"
+          placement="top"
+        >
+          <div
+            class="questionBox"
+            v-if="recommendList"
+            @click="handleContextDetails(1)"
+          >
+            {{ recommendList.question.question }}
+          </div>
+        </el-tooltip>
+        <div class="sentenceBox">
+          <recommendBoxTop>
+            <template #title>
+              <p>句</p>
+            </template>
+            <template #icon>
+              <img
+                :src="
+                  sentenceLike === 0
+                    ? 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20(1).png'
+                    : 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20_%E5%AE%9E%E5%BF%83%20(1).png'
+                "
+                :class="{ disableClick: date < nowDate }"
+                style="cursor: pointer"
+                @click="giveLike('sentence')"
+              />
+            </template>
+          </recommendBoxTop>
+          <div class="sentenceBoxBottom">
+            <li v-if="recommendList" class="sentence-content">
+              {{ recommendList.sentence.content }}
+            </li>
+            <li v-if="recommendList" style="font-size: 18px">
+              ——{{ recommendList.sentence.author }}
+            </li>
+          </div>
+        </div></el-col
+      >
+      <el-col :span="10" class="record">
+        <div class="trapezoid">
+          <recommendBoxTop>
+            <template #title>
+              <p>乐</p>
+            </template>
+            <template #icon>
+              <img
+                :src="
+                  musicLike === 0
+                    ? 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20(1).png'
+                    : 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20_%E5%AE%9E%E5%BF%83%20(1).png'
+                "
+                :class="{ disableClick: date < nowDate }"
+                style="cursor: pointer"
+                @click="giveLike('music')"
+              />
+            </template>
+          </recommendBoxTop>
+        </div>
+        <div class="recordBody">
+          <div class="musicImgBox">
+            <span></span>
+            <img
+              ref="musicImg"
+              class="musicImg"
+              v-if="recommendList"
+              :src="recommendList.music.coverImg"
+            />
+          </div>
+          <div class="musicContent">
+            <div class="lyrics-container">
+              <li
+                v-for="(lyric, index) in lyrics"
+                :key="index"
+                :class="{ active: index === lyricIndex }"
+              >
+                {{ lyric.text }}
+              </li>
+            </div>
+            <audio
+              ref="audioRef"
+              controls
+              v-if="recommendList"
+              :src="recommendList.music.songMP3"
+              @timeupdate="handleTimeUpdate"
+            ></audio>
+          </div></div
+      ></el-col>
+    </el-row>
+    <el-row class="secondRow">
+      <el-col :span="9">
+        <el-tooltip
+          effect="dark"
+          content="点击可查看文章详情哦！"
+          placement="top"
+        >
+          <div class="articleBox">
+            <recommendBoxTop>
+              <template #title>
+                <p>文</p>
+              </template>
+              <template #icon>
+                <img
+                  :src="
+                    articleLike === 0
+                      ? 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20(1).png'
+                      : 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20_%E5%AE%9E%E5%BF%83%20(1).png'
+                  "
+                  :class="{ disableClick: date < nowDate }"
+                  style="cursor: pointer"
+                  @click="giveLike('article')"
+                />
+              </template>
+            </recommendBoxTop>
+            <div class="articleBoxBottom" @click="handleContextDetails(2)">
+              <li v-if="recommendList" style="font-size: 25px">
+                {{ recommendList.article.title }}
+              </li>
+              <li v-if="recommendList" style="font-size: 14px">
+                {{ recommendList.article.author }}
+              </li>
+              <li
+                v-if="recommendList"
+                class="article-content"
+                v-html="parsedContent"
+              ></li>
+            </div>
+          </div>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="5">
+        <el-tooltip
+          effect="dark"
+          content="点击可查看书籍详情哦！"
+          placement="top"
+        >
+          <recommendBox @click="handleContextDetails(3)">
+            <template #title>
+              <p>书</p>
+            </template>
+            <template #icon>
+              <img
+                :src="
+                  bookLike === 0
+                    ? 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20(1).png'
+                    : 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20_%E5%AE%9E%E5%BF%83%20(1).png'
+                "
+                :class="{ disableClick: date < nowDate }"
+                style="cursor: pointer"
+                @click="giveLike('book')"
+              />
+            </template>
+            <template #body>
+              <img v-if="recommendList" :src="recommendList.book.coverImg" />
+              <li v-if="recommendList">《{{ recommendList.book.title }}》</li>
+              <li v-if="recommendList">
+                作者：{{ recommendList.book.author }}
+              </li>
+              <!-- <li v-if="recommendList" class="book-brief">
+              简介：{{ recommendList.book.brief }}
+            </li> -->
+            </template>
+          </recommendBox>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="5">
+        <el-tooltip
+          effect="dark"
+          content="点击可查看电影详情哦！"
+          placement="top"
+        >
+          <recommendBox @click="handleContextDetails(4)">
+            <template #title>
+              <p>影</p>
+            </template>
+            <template #icon>
+              <img
+                :src="
+                  movieLike === 0
+                    ? 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20(1).png'
+                    : 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20_%E5%AE%9E%E5%BF%83%20(1).png'
+                "
+                :class="{ disableClick: date < nowDate }"
+                style="cursor: pointer"
+                @click="giveLike('movie')"
+              />
+            </template>
+            <template #body>
+              <img v-if="recommendList" :src="recommendList.movie.coverImg" />
+              <li v-if="recommendList">《{{ recommendList.movie.title }}》</li>
+              <li v-if="recommendList" class="book-brief">
+                简介：{{ recommendList.movie.brief }}
+              </li>
+            </template>
+          </recommendBox>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="5">
+        <el-tooltip content="点击可欣赏放大画像哦！" placement="top">
+          <recommendBox @click="handleContextDetails(5)">
+            <template #title>
+              <p>画</p>
+            </template>
+            <template #icon>
+              <img
+                :src="
+                  paintingLike === 0
+                    ? 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20(1).png'
+                    : 'https://lily-1324384133.cos.ap-guangzhou.myqcloud.com/%E7%88%B1%E5%BF%83%20_%E5%AE%9E%E5%BF%83%20(1).png'
+                "
+                :class="{ disableClick: date < nowDate }"
+                style="cursor: pointer"
+                @click="giveLike('painting')"
+              />
+            </template>
+            <template #body>
+              <img
+                v-if="recommendList"
+                :src="recommendList.painting.paintWork"
+              />
+              <li v-if="recommendList">
+                《{{ recommendList.painting.title }}》
+              </li>
+              <li v-if="recommendList">
+                作者：{{ recommendList.painting.painter }}
+              </li>
+            </template>
+          </recommendBox>
+        </el-tooltip>
+      </el-col>
+    </el-row>
+    <contentDetailsBox :message="message" ref="DetailsBox"></contentDetailsBox>
+  </div>
+</template>
+<style scoped>
+.disableClick {
+  pointer-events: none;
+}
+li {
+  list-style: none;
+  margin: 2px;
+}
+.container {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 40px 25px 40px;
+  background: linear-gradient(#d6f7ff, #fdfae8);
+}
+.firstRow {
+  height: 350px;
+  margin-bottom: 20px;
+}
+.searchHistory {
+  display: flex;
+  padding: 0;
+  width: 100%;
+  flex-wrap: wrap;
+  user-select: none;
+}
+.searchHistory .block {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  height: 150px;
+  margin-top: 30px;
+  text-align: center;
+  flex: 1;
+}
+.searchHistory .demonstration {
+  display: block;
+  color: var(--el-text-color-secondary);
+  font-size: 20px;
+}
+.dateBox .date {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 160px;
+  user-select: none;
+}
+.dateBox .date .dayBox {
+  width: 145px;
+  font-size: 120px;
+  margin-top: 15px;
+}
+.dateBox .date .yearBox {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.dateBox .date .yearBox span {
+  font-size: 30px;
+}
+.questionBox {
+  width: 95%;
+  height: 65px;
+  box-sizing: border-box;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  padding: 0 10px;
+  text-align: center;
+  line-height: 65px;
+  font-size: 20px;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+.questionBox:hover {
+  transform: scale(0.95);
+  background: linear-gradient(#fbfae9, #fff);
+}
+.sentenceBox {
+  width: 95%;
+  height: 245px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s;
+}
+.sentenceBoxBottom {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 200px;
+  padding: 0 6% 0 0;
+}
+.record {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  transition: transform 0.3s;
+}
+.trapezoid {
+  position: relative; 
+  width: 288px;
+  height: 52.5px;
+  background-color: #fff;
+  border-top-left-radius: 8px;
+  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.1);
+}
+.trapezoid::after {
+  content: ''; 
+  position: absolute; 
+  top: 0;
+  left: 288px;
+  width: 0px;
+  height: 0px;
+  border-top: 26.75px solid transparent;
+  border-right: 26.75px solid transparent;
+  border-left: 26.75px solid #fff;
+  border-bottom: 26.75px solid #fff;
+}
+.recordBody {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  height: 85%;
+  background-color: #fff;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-top-right-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  padding-left: 20px;
+  box-sizing: border-box;
+}
+.musicImgBox {
+  position: relative;
+}
+.musicImgBox span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 50px;
+  width: 50px;
+  background-color: #fff;
+  border-radius: 50%;
+  z-index: 1;
+  box-shadow: inset 0px 0px 3px rgba(0, 0, 0, 1);
+}
+.musicImg {
+  height: 225px;
+  width: 225px;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 1);
+  transition: transform 0.1s;
+}
+.musicContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  width: 280px;
+  height: 226px;
+  padding-top: 20px;
+  box-sizing: border-box;
+}
+.musicContent audio {
+  width: 100%;
+  height: 50px;
+}
+.lyrics-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-height: 140px;
+  overflow-y: scroll;
+}
+.lyrics-container::-webkit-scrollbar {
+  display: none;
+}
+.lyrics-container li {
+  padding: 5px 0;
+  transition: transform 0.3s;
+}
+.active {
+  color: #f56c6c;
+  font-size: 20px;
+}
+.secondRow {
+  height: 370px;
+}
+.articleBox {
+  margin: 0 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s;
+}
+.articleBox:hover {
+  transform: scale(0.95);
+  background: linear-gradient(#d6f7ff, #fff);
+}
+.articleBoxBottom {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 330px;
+  padding: 0 20px 20px 20px;
+}
+</style>
+<script setup>
+import aiBox from '@/components/CBT/aiBox.vue'
+import { ref } from 'vue'
+const aiBoxRef = ref(null)
+</script>
+<template>
+  <div class="container">
+    <el-row class="firstFloor">
+      <el-col :span="6"> </el-col>
+      <el-col :span="12">
+        <el-carousel class="slideShow" motion-blur>
+          <el-carousel-item>
+            <img src="@/assets/CBT/轮播图1.png" alt="" />
+          </el-carousel-item>
+          <el-carousel-item>
+            <img src="@/assets/CBT/轮播图2.png" alt="" />
+          </el-carousel-item>
+          <el-carousel-item>
+            <img src="@/assets/CBT/轮播图3.png" alt="" />
+          </el-carousel-item>
+        </el-carousel>
+      </el-col>
+      <el-col
+        :span="6"
+        style="display: flex; justify-content: center; align-items: center"
+        ><div class="aiBox">
+          <img src="@/assets/logo.png" alt="" />
+          <el-button type="primary" @click="aiBoxRef.open()"
+            >心灵沟通室</el-button
+          >
+        </div>
+        <aiBox ref="aiBoxRef"></aiBox>
+      </el-col>
+    </el-row>
+    <el-row class="secondFloor">
+      <el-col :span="7"
+        ><div class="bigBox">
+          <h1>本 我</h1>
+          <div class="smallBox">
+            <a href=""
+              ><img src="@/assets/CBT/德诚_辩论001.png" alt="" />探讨</a
+            >
+            <a href=""><img src="@/assets/CBT/模拟器.png" alt="" />模拟</a>
+            <a href=""><img src="@/assets/CBT/视频.png" alt="" />重构</a>
+          </div>
+        </div></el-col
+      >
+      <el-col :span="7"
+        ><div class="bigBox">
+          <h1>自 我</h1>
+          <div class="smallBox">
+            <a href=""
+              ><img src="@/assets/CBT/综合测评管理.png" alt="" />测评</a
+            >
+            <a href=""><img src="@/assets/CBT/冥想放松.png" alt="" />冥想</a>
+            <a href=""><img src="@/assets/CBT/文学.png" alt="" />记录</a>
+          </div>
+        </div>
+      </el-col>
+      <el-col :span="7"
+        ><div class="bigBox">
+          <h1>超 我</h1>
+          <div class="smallBox">
+            <a href=""><img src="@/assets/CBT/咨询.png" alt="" />对话</a>
+            <a href=""><img src="@/assets/CBT/课程.png" alt="" />观察</a>
+            <a href=""><img src="@/assets/CBT/行为分析.png" alt="" />知行</a>
+          </div>
+        </div></el-col
+      >
+    </el-row>
+  </div>
+</template>
+<style scoped>
+.container {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 40px 25px 40px;
+  height: 770px;
+  background: linear-gradient(#d6f7ff, #fdfae8);
+}
+.container .firstFloor {
+  margin-top: 20px;
+  height: 45%;
+  border-radius: 10px;
+  padding: 20px;
+}
+.slideShow {
+  border-radius: 8px;
+  height: 287px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.el-carousel__item img {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+}
+.aiBox {
+  width: 200px;
+  height: 250px;
+  background-color: #fdfae8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  box-sizing: border-box;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.aiBox img {
+  width: 100px;
+  height: 100px;
+}
+.secondFloor {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-around;
+  height: 45%;
+  border-radius: 10px;
+  padding: 20px;
+}
+.secondFloor .bigBox {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  box-sizing: border-box;
+}
+.secondFloor .bigBox h1 {
+  font-size: 35px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+.secondFloor .bigBox .smallBox {
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+.secondFloor .bigBox .smallBox a {
+  border: 1px solid #d8f7fe;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 20px;
+  flex: 1;
+  color: #000;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  margin: 10px;
+  padding: 5px;
+  background-color: #fdfae8;
+  border-radius: 8px;
+}
+.secondFloor .bigBox .smallBox a:hover {
+  background: linear-gradient(#d6f7ff, #fdfae8);
+}
+.secondFloor .bigBox .smallBox a img {
+  width: 70%;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+</style>
+<script setup>
+import { h, ref, watch, nextTick } from 'vue'
+import { Close, Lock, Iphone, Key } from '@element-plus/icons-vue'
+import { ElDivider } from 'element-plus'
+import { useUserStore } from '@/stores'
+import otherWayLoginBox from '@/components/login/OtherWayLoginBox.vue'
+import { useRouter } from 'vue-router'
+const router = useRouter()
+const userStore = useUserStore()
+import {
+  userGetRegisterCodeService,
+  userGetLoginCodeService,
+  userMsgLoginService,
+  userRegisterService,
+  userCodeLoginService
+} from '@/api/login.js'
+const showLogin = ref(false)
+const handleClose = () => {
+  showLogin.value = false
+}
+const handleLogin = () => {
+  showLogin.value = true
+  setTimeout(() => {
+    nextTick(() => {
+      phoneNum.value.focus()
+    })
+  }, 350)
+}
+const formModel = ref({
+  phoneNum: '',
+  password: '',
+  smsCode: '',
+  rePassword: ''
+})
+const isRegister = ref(false)
+watch(isRegister, () => {
+  if (isRegister.value === true) {
+    nextTick(() => {
+      phoneNumRegister.value.focus()
+    })
+  } else {
+    nextTick(() => {
+      phoneNum.value.focus()
+    })
+  }
+  formModel.value = {
+    phoneNum: '',
+    password: '',
+    smsCode: '',
+    rePassword: ''
+  }
+})
+const rules = {
+  phoneNum: [
+    { required: true, message: '请输入手机号码', trigger: 'blur' },
+    {
+      pattern: /^1[3-9]\d{9}$/,
+      message: '手机号码格式不正确',
+      trigger: 'blur'
+    }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[0-9])(?=.*[a-zA-Z])[0-9a-zA-Z]{8,15}$/,
+      message: '密码长度8至15位，必须同时包含字母和数字。',
+      trigger: 'blur'
+    }
+  ],
+  smsCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    {
+      pattern: /^\d{6}$/,
+      message: '验证码必须是6位数字',
+      trigger: 'blur'
+    }
+  ],
+  rePassword: [
+    { required: true, message: '请再次输入密码', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[0-9])(?=.*[a-zA-Z])[0-9a-zA-Z]{8,15}$/,
+      message: '密码长度8至15位，必须同时包含字母和数字。',
+      trigger: 'blur'
+    },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== formModel.value.password) {
+          callback(new Error('两次输入密码不一致!'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+const form = ref()
+const CodeButton = ref()
+const countDownOne = ref(60)
+const timerOne = ref(null)
+const handleCode = async () => {
+  const isTrue = await form.value.validateField('phoneNum')
+  if (isTrue) {
+    if (!timerOne.value && countDownOne.value === 60) {
+      const res = await userGetRegisterCodeService(formModel.value)
+      ElMessage.success(res.data.msg)
+      CodeButton.value.style.color = '#9adaee'
+      timerOne.value = setInterval(() => {
+        countDownOne.value--
+        if (countDownOne.value === 0) {
+          clearInterval(timerOne.value)
+          countDownOne.value = 60
+          timerOne.value = null
+          CodeButton.value.style.color = '#a8abb2'
+        }
+      }, 1000)
+    }
+  }
+}
+const handleRegister = async () => {
+  const isTrue = await form.value.validate()
+  if (isTrue) {
+    const res = await userRegisterService(formModel.value)
+    ElMessage.success(res.data.msg)
+  }
+  isRegister.value = false
+  clearInterval(timerOne.value)
+  countDownOne.value = 60
+  formModel.value = {
+    phoneNum: '',
+    password: '',
+    smsCode: '',
+    rePassword: ''
+  }
+}
+const isPhoneLogin = ref(false) 
+const spacer = h(ElDivider, { direction: 'vertical' })
+const handleCodeLogin = async () => {
+  await form.value.validate()
+  const res = await userCodeLoginService(formModel.value)
+  const { uid, token, userId, nickname, avatar, subscriber, signature } =
+    res.data.data
+  userStore.setBasicUser({
+    uid,
+    token,
+    userId,
+    nickname,
+    avatar,
+    subscriber,
+    signature
+  })
+  ElMessage.success('登录成功')
+  showLogin.value = false
+  formModel.value = {
+    phoneNum: '',
+    password: '',
+    smsCode: '',
+    rePassword: ''
+  }
+  location.reload() 
+}
+watch(isPhoneLogin, () => {
+  if (isPhoneLogin.value === true) {
+    nextTick(() => {
+      phoneNumLogin.value.focus()
+    })
+  } else {
+    nextTick(() => {
+      phoneNum.value.focus()
+    })
+  }
+  formModel.value = {
+    phoneNum: '',
+    password: '',
+    smsCode: '',
+    rePassword: ''
+  }
+})
+const countDownTwo = ref(60)
+const timerTwo = ref(null)
+const getLoginCode = async () => {
+  const isTrue = await form.value.validateField('phoneNum')
+  if (isTrue) {
+    if (!timerTwo.value && countDownTwo.value === 60) {
+      const res = await userGetLoginCodeService(formModel.value)
+      ElMessage.success(res.data.msg)
+      CodeButton.value.style.color = '#9adaee'
+      timerTwo.value = setInterval(() => {
+        countDownTwo.value--
+        if (countDownTwo.value === 0) {
+          clearInterval(timerTwo.value)
+          countDownTwo.value = 60
+          timerTwo.value = null
+          CodeButton.value.style.color = '#a8abb2'
+        }
+      }, 1000)
+    }
+  }
+}
+const handleMsgLogin = async () => {
+  await form.value.validate()
+  const res = await userMsgLoginService(formModel.value)
+  const { uid, token, userId, nickname, avatar, subscriber, signature } =
+    res.data.data
+  userStore.setBasicUser({
+    uid,
+    token,
+    userId,
+    nickname,
+    avatar,
+    subscriber,
+    signature
+  })
+  ElMessage.success('登录成功')
+  showLogin.value = false
+  clearInterval(timerTwo.value)
+  countDownTwo.value = 60
+  formModel.value = {
+    phoneNum: '',
+    password: '',
+    smsCode: '',
+    rePassword: ''
+  }
+  location.reload() 
+}
+const handleCommand = (command) => {
+  if (command === 'a') {
+    isPhoneLogin.value = true
+  } else if (command === 'b') {
+    router.push('/findPassword')
+    showLogin.value = false
+  }
+}
+const phoneNumRegister = ref(null)
+const phoneNumLogin = ref(null)
+const phoneNum = ref(null)
+const smsCode = ref(null)
+const password = ref(null)
+const rePassword = ref(null)
+const handleEnter = (oldValue, newValue) => {
+  if (oldValue === phoneNumRegister.value) {
+    handleCode()
+  } else if (oldValue === phoneNumLogin.value) {
+    getLoginCode()
+  }
+  oldValue.blur()
+  newValue.focus()
+}
+defineExpose({
+  handleLogin
+})
+</script>
+<template>
+  <div class="loginShade" :class="{ show: showLogin }">
+    <div class="loginBox">
+      <el-icon :size="30" class="close" @click="handleClose">
+        <Close />
+      </el-icon>
+      <el-row class="register-form">
+        <el-col :span="4"> </el-col>
+        <el-col :span="14" :offset="2" class="form">
+          <!-- 以下是注册的代码 -->
+          <el-form
+            v-if="isRegister"
+            :model="formModel"
+            :rules="rules"
+            ref="form"
+          >
+            <div class="titleForm">
+              <el-button
+                link
+                size="large"
+                style="margin: 20px 0px; font-size: 20px"
+                >注册</el-button
+              >
+            </div>
+            <el-form-item prop="phoneNum">
+              <el-input
+                size="large"
+                class="phone-element"
+                :prefix-icon="Iphone"
+                v-model="formModel.phoneNum"
+                placeholder="请输入手机号码"
+                ref="phoneNumRegister"
+                @keyup.enter="handleEnter(phoneNumRegister, smsCode)"
+              >
+                <template #suffix>
+                  <div>|</div>
+                  <span ref="CodeButton" @click="handleCode">{{
+                    countDownOne === 60
+                      ? '获取验证码'
+                      : `重新发送(${countDownOne})`
+                  }}</span>
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item prop="smsCode">
+              <el-input
+                size="large"
+                :prefix-icon="Key"
+                v-model="formModel.smsCode"
+                placeholder="请输入验证码"
+                ref="smsCode"
+                @keyup.enter="handleEnter(smsCode, password)"
+              ></el-input>
+            </el-form-item>
+            <el-form-item prop="password">
+              <el-input
+                size="large"
+                :prefix-icon="Lock"
+                v-model="formModel.password"
+                placeholder="请输入密码"
+                type="password"
+                ref="password"
+                show-password
+                @keyup.enter="handleEnter(password, rePassword)"
+              ></el-input>
+            </el-form-item>
+            <el-form-item prop="rePassword">
+              <el-input
+                size="large"
+                :prefix-icon="Lock"
+                v-model="formModel.rePassword"
+                placeholder="请再次输入密码"
+                ref="rePassword"
+                show-password
+                @keyup.enter="handleRegister"
+                type="password"
+              ></el-input>
+            </el-form-item>
+            <el-form-item>
+              <el-button
+                style="width: 100%"
+                type="primary"
+                @click="handleRegister"
+                >注册</el-button
+              ><el-link
+                type="info"
+                :underline="false"
+                @click="isRegister = false"
+                style="margin-top: 10px; user-select: none"
+              >
+                ← 去登录
+              </el-link>
+            </el-form-item>
+          </el-form>
+          <!-- 一下是登录的代码 -->
+          <el-form
+            v-else
+            class="loginModule"
+            :model="formModel"
+            :rules="rules"
+            ref="form"
+          >
+            <!-- 头部导航栏 -->
+            <div class="titleForm">
+              <el-space :size="5" :spacer="spacer">
+                <el-button
+                  link
+                  size="large"
+                  @click="isPhoneLogin = false"
+                  :style="{ color: isPhoneLogin ? '#a8abb2' : '#409eff' }"
+                  style="margin: 20px 0px; font-size: 20px"
+                  >密码登录
+                </el-button>
+                <el-button
+                  link
+                  size="large"
+                  @click="isPhoneLogin = true"
+                  :style="{ color: isPhoneLogin ? '#409eff' : '#a8abb2' }"
+                  style="margin: 20px 0px; font-size: 20px"
+                  >短信登录</el-button
+                >
+              </el-space>
+            </div>
+            <!-- 下面是短信登录的代码 -->
+            <div class="phoneLogin" v-if="isPhoneLogin">
+              <el-form-item prop="phoneNum">
+                <el-input
+                  v-model="formModel.phoneNum"
+                  size="large"
+                  class="phone-element"
+                  :prefix-icon="Iphone"
+                  placeholder="请输入手机号码"
+                  ref="phoneNumLogin"
+                  @keyup.enter="handleEnter(phoneNumLogin, smsCode)"
+                >
+                  <template #suffix>
+                    <div>|</div>
+                    <span ref="CodeButton" @click="getLoginCode">{{
+                      countDownTwo === 60
+                        ? '获取验证码'
+                        : `重新发送(${countDownTwo})`
+                    }}</span>
+                  </template>
+                </el-input>
+              </el-form-item>
+              <el-form-item prop="smsCode">
+                <el-input
+                  v-model="formModel.smsCode"
+                  size="large"
+                  :prefix-icon="Key"
+                  placeholder="请输入验证码"
+                  ref="smsCode"
+                  @keyup.enter="handleMsgLogin"
+                ></el-input>
+              </el-form-item>
+              <el-form-item>
+                <el-button
+                  style="width: 100%"
+                  type="primary"
+                  @click="handleMsgLogin"
+                  >登录</el-button
+                >
+              </el-form-item>
+            </div>
+            <!-- 下面是密码登录的代码 -->
+            <div class="CodeLogin" v-else>
+              <el-form-item prop="phoneNum">
+                <el-input
+                  size="large"
+                  class="phone-element"
+                  v-model="formModel.phoneNum"
+                  :prefix-icon="Iphone"
+                  placeholder="请输入手机号码"
+                  style="width: 265.41px; height: 42px"
+                  ref="phoneNum"
+                  @keyup.enter="handleEnter(phoneNum, password)"
+                >
+                </el-input>
+              </el-form-item>
+              <el-form-item prop="password">
+                <el-input
+                  size="large"
+                  :prefix-icon="Lock"
+                  v-model="formModel.password"
+                  placeholder="请输入密码"
+                  type="password"
+                  ref="password"
+                  @keyup.enter="handleCodeLogin"
+                >
+                  <template #suffix>
+                    <el-dropdown @command="handleCommand">
+                      <span class="el-dropdown-link"> 忘记密码？ </span>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item command="a"
+                            >发送短信快速登录</el-dropdown-item
+                          >
+                          <el-dropdown-item command="b"
+                            >去找回密码</el-dropdown-item
+                          >
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown></template
+                  ></el-input
+                >
+              </el-form-item>
+              <el-form-item>
+                <el-button
+                  style="width: 100%"
+                  type="primary"
+                  @click="handleCodeLogin"
+                  >登录</el-button
+                >
+              </el-form-item>
+            </div>
+            <otherWayLoginBox></otherWayLoginBox>
+            <el-link
+              type="info"
+              :underline="false"
+              @click="isRegister = true"
+              style="
+                user-select: none;
+                position: absolute;
+                left: 114px;
+                bottom: -22px;
+              "
+            >
+              ← 去注册
+            </el-link>
+          </el-form>
+        </el-col>
+      </el-row>
+    </div>
+  </div>
+</template>
+<style scoped>
+.loginShade {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s ease-in-out,
+    visibility 0.3s ease-in-out;
+  z-index: 999;
+}
+.loginShade.show {
+  opacity: 1;
+  visibility: visible;
+}
+.loginShade .loginBox {
+  box-sizing: border-box;
+  position: absolute;
+  width: 820px;
+  min-height: 430px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-image: url('@/assets/loginBac.png');
+  background-size: 100%;
+  border-radius: 8px;
+  padding: 19px 65px 19px 300px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.loginShade .loginBox .close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  cursor: pointer;
+}
+.register-form .phone-element span {
+  width: 80px;
+  padding-left: 10px;
+  user-select: none;
+  cursor: pointer;
+}
+.register-form .phone-element span:hover {
+  color: #97d9ee;
+}
+.titleForm {
+  justify-content: center;
+  display: flex;
+  flex: 1;
+  font-size: var(--font-size);
+  line-height: 28px;
+  min-width: 0;
+  position: relative;
+  box-sizing: border-box;
+}
+.loginModule {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.el-loading-spinner .path {
+  stroke: rgb(13, 161, 219);
+}
+.el-dropdown-link {
+  cursor: pointer;
+  color: var(--el-color-primary);
+  display: flex;
+  align-items: center;
+}
+</style>
+<script lang="ts" setup>
+import { ref, nextTick } from 'vue'
+import { Iphone, Key, Lock } from '@element-plus/icons-vue'
+import { ElMessage, ElSteps, ElForm, ElInput, ElButton } from 'element-plus'
+import { userGetForgetPwdCodeService, userResetPwdService } from '@/api/login'
+import router from '@/router'
+const active = ref(0) 
+setTimeout(() => {
+  nextTick(() => {
+    phoneNum.value.focus()
+  })
+}, 350)
+const steps = [
+  {
+    title: '确认手机号码',
+    template: '请确认您的手机号码'
+  },
+  {
+    title: '输入手机验证码',
+    template: '请确认您的手机验证码'
+  },
+  {
+    title: '输入新密码',
+    template: '请设置您的新密码'
+  },
+  {
+    title: '再次输入新密码',
+    template: '请再次设置您的新密码'
+  }
+]
+const formModel = ref({
+  phoneNum: '',
+  newPassword: '',
+  smsCode: '',
+  reNewPassword: ''
+})
+const rules = {
+  phoneNum: [
+    { required: true, message: '请输入手机号码', trigger: 'blur' },
+    {
+      pattern: /^1[3-9]\d{9}$/,
+      message: '手机号码格式不正确',
+      trigger: 'blur'
+    }
+  ],
+  newPassword: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    {
+      pattern: /^\S{6,15}$/,
+      message: '密码必须是6-15位的非空字符',
+      trigger: 'blur'
+    }
+  ],
+  smsCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    {
+      pattern: /^\d{6}$/,
+      message: '验证码必须是6位数字',
+      trigger: 'blur'
+    }
+  ],
+  reNewPassword: [
+    { required: true, message: '请再次输入密码', trigger: 'blur' },
+    {
+      pattern: /^\S{6,15}$/,
+      message: '密码必须是6-15的非空字符',
+      trigger: 'blur'
+    },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== formModel.value.newPassword) {
+          callback(new Error('两次输入密码不一致!'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+const phoneNum = ref(null)
+const smsCode = ref(null)
+const newPassword = ref(null)
+const reNewPassword = ref(null)
+const next = async () => {
+  if (active.value === 0) {
+    const isTrue = await form.value.validateField('phoneNum')
+    if (isTrue) {
+      if (timer.value) {
+        if (active.value < steps.length - 1) {
+          active.value++
+          nextTick(() => {
+            smsCode.value.focus()
+          })
+        }
+      } else {
+        ElMessage.error('请先获取手机验证码')
+        return
+      }
+    }
+  } else if (active.value === 1) {
+    const isTrue = await form.value.validateField('smsCode')
+    if (isTrue) {
+      if (active.value < steps.length - 1) {
+        active.value++
+        nextTick(() => {
+          newPassword.value.focus()
+        })
+      }
+    }
+  } else if (active.value === 2) {
+    const isTrue = await form.value.validateField('newPassword')
+    if (isTrue) {
+      if (active.value < steps.length - 1) {
+        active.value++
+        nextTick(() => {
+          reNewPassword.value.focus()
+        })
+      }
+    }
+  } else if (active.value === 3) {
+    const isTrue = await form.value.validateField('reNewPassword')
+    if (isTrue) {
+      const res = await userResetPwdService(formModel.value)
+      ElMessage.success(res.data.msg)
+      router.push('/homePage')
+    }
+  }
+}
+const prev = () => {
+  if (active.value > 0) {
+    active.value--
+  }
+}
+const form = ref() 
+const countDown = ref(60) 
+const timer = ref(null) 
+const CodeButton = ref(null) 
+const getMsgCode = async () => {
+  const isTrue = await form.value.validateField('phoneNum')
+  if (isTrue) {
+    if (!timer.value && countDown.value === 60) {
+      const res = await userGetForgetPwdCodeService(formModel.value)
+      ElMessage.success(res.data.msg)
+      CodeButton.value.style.color = '#9adaee'
+      timer.value = setInterval(() => {
+        countDown.value--
+        if (countDown.value === 0) {
+          clearInterval(timer.value)
+          countDown.value = 60
+          timer.value = null
+          CodeButton.value.style.color = '#a8abb2'
+        }
+      }, 1000)
+    } else {
+      return
+    }
+  }
+}
+const handlePhoneEnter = () => {
+  getMsgCode()
+  setTimeout(() => {
+    next()
+  }, 350)
+}
+</script>
+<template>
+  <div class="container">
+    <el-steps :active="active" align-center style="width: 650px; height: 80px">
+      <el-step
+        v-for="(step, index) in steps"
+        :key="index"
+        :title="step.title"
+      />
+    </el-steps>
+    <div v-if="active === 0" class="stepBox">
+      <!-- 第一步：确认手机号码 -->
+      <el-form
+        @submit.prevent
+        label-width="auto"
+        style="max-width: 600px"
+        ref="form"
+        :model="formModel"
+        :rules="rules"
+      >
+        <el-form-item prop="phoneNum">
+          <el-input
+            :prefix-icon="Iphone"
+            size="large"
+            class="phone-element"
+            placeholder="请输入你的手机号码"
+            style="width: 300px"
+            v-model="formModel.phoneNum"
+            @keyup.enter="handlePhoneEnter"
+            ref="phoneNum"
+          >
+            <template #suffix>
+              <div style="margin-right: 10px">|</div>
+              <span
+                style="cursor: pointer; width: 80px"
+                ref="CodeButton"
+                @click="getMsgCode"
+                >{{
+                  countDown === 60 ? '获取验证码' : `重新发送(${countDown})`
+                }}</span
+              >
+            </template></el-input
+          >
+        </el-form-item>
+      </el-form>
+    </div>
+    <div v-if="active === 1" class="stepBox">
+      <!-- 第二步：确认手机验证码 -->
+      <el-form
+        @submit.prevent
+        label-width="auto"
+        style="max-width: 600px"
+        :model="formModel"
+        :rules="rules"
+        ref="form"
+      >
+        <el-form-item prop="smsCode">
+          <el-input
+            :prefix-icon="Key"
+            size="large"
+            class="phone-element"
+            placeholder="请输入你的手机验证码"
+            style="width: 300px"
+            v-model="formModel.smsCode"
+            ref="smsCode"
+            @keyup.enter="next"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+    </div>
+    <div v-else-if="active === 2" class="stepBox">
+      <!-- 第三步：输入新密码 -->
+      <el-form
+        @submit.prevent
+        label-width="auto"
+        style="max-width: 600px"
+        :model="formModel"
+        :rules="rules"
+        ref="form"
+      >
+        <el-form-item prop="newPassword">
+          <el-input
+            size="large"
+            :prefix-icon="Lock"
+            type="password"
+            placeholder="请输入新密码"
+            style="width: 300px"
+            v-model="formModel.newPassword"
+            ref="newPassword"
+            @keyup.enter="next"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+    </div>
+    <div v-else-if="active === 3" class="stepBox">
+      <!-- 第四步：再次输入新密码 -->
+      <el-form
+        @submit.prevent
+        label-width="auto"
+        style="max-width: 600px"
+        :model="formModel"
+        :rules="rules"
+        ref="form"
+      >
+        <el-form-item prop="reNewPassword">
+          <el-input
+            size="large"
+            :prefix-icon="Lock"
+            type="password"
+            placeholder="请再次输入新密码"
+            style="width: 300px"
+            v-model="formModel.reNewPassword"
+            ref="reNewPassword"
+            @keyup.enter="next"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+    </div>
+    <div style="margin-top: 20px">
+      <el-button v-if="active > 0" @click="prev">上一步</el-button>
+      <el-button type="primary" @click="next">
+        {{ active === 3 ? '提交' : '下一步' }}</el-button
+      >
+    </div>
+  </div>
+</template>
+<style scoped>
+.container {
+  width: 100%; 
+  height: 600px; 
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: auto; 
+  padding: 20px; 
+  box-sizing: border-box; 
+}
+.stepBox {
+  width: 520px; 
+  height: 80px; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+</style>
+import axios from 'axios'
+import { useUserStore } from '@/stores'
+import { ElMessage, ElLoading } from 'element-plus'
+const baseURL = 'http://134.175.130.240:8087'
+let loadingInstance 
+const startLoading = () => {
+  loadingInstance = ElLoading.service({
+    lock: true,
+    text: '玩命加载中...',
+    background: 'rgba(0, 0, 0, 0.1)'
+  })
+}
+const endLoading = () => {
+  if (loadingInstance) {
+    loadingInstance.close()
+  }
+}
+const instance = axios.create({
+  baseURL,
+  timeout: 10000
+})
+instance.interceptors.request.use(
+  (config) => {
+    startLoading() 
+    const userStore = useUserStore()
+    if (userStore.token) {
+      config.headers.Authorization = userStore.token
+    }
+    return config
+  },
+  (error) => {
+    endLoading() 
+    return Promise.reject(error)
+  }
+)
+function handleErrorResponse(error) {
+  endLoading() 
+  if (error.data.msg) {
+    const message = error.data.msg || '服务异常'
+    ElMessage.error(message)
+  }
+  return Promise.reject(error)
+}
+function handleSuccessResponse(response) {
+  endLoading() 
+  if (response.data.code >= 200 && response.data.code < 300) {
+    return response
+  } else {
+    return handleErrorResponse(response)
+  }
+}
+instance.interceptors.response.use(
+  (response) => handleSuccessResponse(response),
+  (error) => {
+    return handleErrorResponse(error)
+  }
+)
+export default instance
+<script lang="ts" setup>
+import { ref, watch } from 'vue'
+import loginPage from '@/views/login/LoginPage.vue' 
+import smallBox from '@/components/login/SmallBox.vue' 
+import userCenter from '@/components/login/UserCenter.vue' 
+import { useRoute } from 'vue-router' 
+import { useUserStore } from '@/stores' 
+import { userLogoutService } from '@/api/login.js' 
+import { ElMessage } from 'element-plus' 
+import logoBox from '@/components/commonComponents/LogoBox.vue' 
+const userStore = useUserStore() 
+const token = userStore.basicUser.token 
+const userImg = ref(userStore.basicUser.avatar || '') 
+watch(
+  () => userStore.basicUser.avatar,
+  (newValue) => {
+    userImg.value = newValue
+  }
+)
+const handleLoginPage = ref(null)
+const handleLogin = () => {
+  if (!userStore.basicUser.token) {
+    handleLoginPage.value.handleLogin()
+  } else {
+    return
+  }
+}
+const route = useRoute() 
+watch(
+  () => route.fullPath,
+  (newVal, oldVal) => {
+    if (oldVal.includes('/findPassword') && newVal.includes('/homePage')) {
+      handleLogin()
+    }
+  }
+)
+const isAvatarHover = ref(false)
+const handleAvatarHover = () => {
+  isAvatarHover.value = true
+}
+const handleAvatarLeave = () => {
+  isAvatarHover.value = false
+}
+const handleLoginOut = async () => {
+  userStore.removeBasicUser() 
+  const res = await userLogoutService(token) 
+  ElMessage.success(res.data.msg)
+  location.reload()
+}
+watch(
+  () => userStore.isLoginOut,
+  (newValue) => {
+    if (newValue == true) {
+      handleLoginOut()
+      userStore.outIsLoginOut()
+    }
+  }
+)
+watch(
+  () => userStore.isLogin,
+  (newValue) => {
+    if (newValue == true) {
+      handleLoginPage.value.handleLogin()
+      userStore.outIsLogin()
+    }
+  }
+)
+const drawerBox = ref(null)
+const handleUserCenter = () => {
+  userStore.setDefaultPage('1-1')
+  drawerBox.value.handleUserCenter()
+}
+const handleHistory = () => {
+  userStore.setDefaultPage('3')
+  drawerBox.value.handleUserCenter()
+}
+</script>
+<template>
+  <el-container class="container">
+    <el-header class="container-header">
+      <el-menu
+        :default-active="$route.path"
+        class="el-menu-demo"
+        mode="horizontal"
+        :ellipsis="false"
+        router
+      >
+        <logoBox></logoBox>
+        <el-menu-item index="/homePage">
+          <img style="width: 30px" src="@/assets/light.png" />
+          <span style="margin-left: 6px; user-select: none">首页</span>
+        </el-menu-item>
+        <el-menu-item index="/userCommunity">
+          <img style="width: 30px" src="@/assets/community.png" />
+          <span style="margin-left: 6px; user-select: none">社区</span>
+        </el-menu-item>
+        <el-menu-item index="/CBT">
+          <img style="width: 30px" src="@/assets/health.png" />
+          <span style="margin-left: 6px; user-select: none">CBT</span>
+        </el-menu-item>
+        <div class="flex-grow" />
+        <ul class="userModules">
+          <el-avatar
+            :size="42"
+            :src="userImg"
+            class="avatar"
+            :class="{
+              'add-hover-effect': isAvatarHover,
+              'avatar-hover-effect': userStore.basicUser.token
+            }"
+            @click="handleLogin"
+          >
+            登录
+          </el-avatar>
+          <div
+            class="userCenter"
+            v-if="userStore.basicUser.token"
+            @mouseenter="handleAvatarHover"
+            @mouseleave="handleAvatarLeave"
+          >
+            <div class="userNickname">{{ userStore.basicUser.nickname }}</div>
+            <div class="userSocialBox">
+              <div class="socialBox">
+                1
+                <span>关注</span>
+              </div>
+              <div class="socialBox">
+                2
+                <span>粉丝</span>
+              </div>
+              <div class="socialBox">
+                3
+                <span>动态</span>
+              </div>
+            </div>
+            <smallBox @click="handleUserCenter">
+              <img src="@/assets/my.png" /> <span>个人中心</span>
+            </smallBox>
+            <smallBox @click="handleLoginOut">
+              <img src="@/assets/退出登录.png" /> <span>退出登录</span>
+            </smallBox>
+          </div>
+          <li><img src="@/assets/会员.png" /><span>会员</span></li>
+          <li><img src="@/assets/爱心.png" /><span>点赞</span></li>
+          <li><img src="@/assets/收藏.png" /><span>收藏</span></li>
+          <li><img src="@/assets/动态.png" /><span>动态</span></li>
+          <li @click="handleHistory">
+            <img src="@/assets/历史记录.png" /><span>历史</span>
+          </li>
+          <li><img src="@/assets/设置.png" /><span>设置</span></li>
+        </ul>
+      </el-menu>
+    </el-header>
+    <el-main class="container-main">
+      <loginPage ref="handleLoginPage"></loginPage>
+      <userCenter ref="drawerBox"></userCenter>
+      <router-view></router-view>
+    </el-main>
+  </el-container>
+</template>
+<style scoped>
+div {
+  box-sizing: border-box;
+}
+.flex-grow {
+  flex-grow: 1;
+}
+.container {
+  margin: 0 auto;
+  min-width: 1082px;
+  max-width: 1600px;
+}
+.container-header .userModules {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.container-header .userModules li {
+  display: flex;
+  height: 100%;
+  width: 50px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  list-style-type: none;
+  cursor: pointer;
+  user-select: none;
+}
+.container-header .userModules .avatar {
+  margin-right: 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.3s;
+  border: 2px solid #e1e4eb;
+}
+.avatar-hover-effect:hover {
+  transform: translate(-40%, 70%) scale(2);
+  z-index: 999;
+}
+.add-hover-effect {
+  transform: translate(-40%, 70%) scale(2);
+  z-index: 999;
+}
+.userCenter {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 50px;
+  padding-bottom: 20px;
+  box-sizing: border-box;
+  width: 260px;
+  height: 0;
+  top: 100%;
+  left: -21%;
+  border-radius: 8px;
+  z-index: 998;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s,
+    visibility 0.3s,
+    height 0.3s ease;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+  background: linear-gradient(#d6f7ff, #fdfae8);
+}
+.avatar-hover-effect:hover + .userCenter,
+.userCenter:hover {
+  opacity: 1;
+  visibility: visible;
+  height: 310px;
+}
+.userSocialBox {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+.socialBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.container-header .userModules li:hover {
+  background-color: #ecf5ff;
+}
+.container-header .userModules li img {
+  height: 25px;
+  margin-bottom: 2px;
+}
+.container-header .userModules li span {
+  font-size: 12px;
+}
+.container-header .userModules li:last-child {
+  margin-right: 20px;
+}
+.container-main {
+  padding: 0;
+  margin: 0 20px;
+  overflow: auto;
+}
+</style>
+import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '@/stores'
+import { ElMessage } from 'element-plus' 
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    {
+      path: '/',
+      component: () => import('@/views/layout/LayoutPage.vue'),
+      redirect: '/homePage',
+      children: [
+        {
+          path: '/homePage',
+          component: () => import('@/views/userUI/HomePage.vue')
+        },
+        {
+          path: '/userCommunity',
+          component: () => import('@/views/userUI/UserCommunity.vue')
+        },
+        {
+          path: '/CBT',
+          component: () => import('@/views/userUI/CBT.vue')
+        },
+        {
+          path: '/login',
+          component: () => import('@/views/login/LoginPage.vue')
+        },
+        {
+          path: '/findPassword',
+          component: () => import('@/views/login/FindPassword.vue')
+        }
+      ]
+    },
+    { path: '/login', component: () => import('@/views/login/LoginPage.vue') }
+  ]
+})
+router.beforeEach((to, from) => {
+  const userStore = useUserStore() 
+  const token = userStore.basicUser.token 
+  if (from.path === '/homePage' && to.path === '/CBT' && token === '') {
+    ElMessage.error('登录后才能访问CBT页面哦！') 
+    userStore.setIsLogin() 
+    return '/homePage'
+  }
+})
+router.beforeEach((to, from) => {
+  const userStore = useUserStore() 
+  const token = userStore.basicUser.token 
+  if (from.path === '/userCommunity' && to.path === '/CBT' && token === '') {
+    ElMessage.error('登录后才能访问CBT页面哦！') 
+    userStore.setIsLogin() 
+    return '/userCommunity'
+  }
+})
+export default router
+import { createPinia } from 'pinia'
+import piniaPluginPersist from 'pinia-plugin-persist'
+const pinia = createPinia()
+pinia.use(piniaPluginPersist)
+export default pinia
+export * from './modules/user'
+export * from './modules/recommendList'
+import { createApp } from 'vue'
+import pinia from '@/stores/index'
+import 'element-plus/dist/index.css'
+import App from './App.vue'
+import router from './router'
+import '@/assets/main.scss'
+const app = createApp(App)
+app.use(pinia)
+app.use(router)
+app.mount('#app')
+<script setup>
+import { ref, watch, nextTick } from 'vue'
+import { useUserStore } from '@/stores' 
+const userStore = useUserStore() 
+const avatar = userStore.basicUser.avatar 
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
+const drawer = ref(false)
+const inputText = ref('')
+const messages = ref([])
+const chatList = ref(null)
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatList.value) {
+      chatList.value.scrollTop = chatList.value.scrollHeight
+    }
+  })
+}
+const timer = ref(null)
+const inputRef = ref(null)
+const sendMessage = () => {
+  if (timer.value) {
+    ElMessage.warning('请等待回答后才可发送哦！')
+    return
+  }
+  if (inputText.value.trim()) {
+    timer.value = setInterval(() => {}, 1000)
+    const newMessage = {
+      text: inputText.value,
+      isMine: true 
+    }
+    messages.value.push(newMessage)
+    simulateServerResponse(newMessage.text)
+    inputText.value = '' 
+    scrollToBottom()
+  }
+}
+const simulateServerResponse = (userInput) => {
+  axios({
+    url: 'http://hmajax.itheima.net/api/robot',
+    params: {
+      spoken: userInput
+    }
+  })
+    .then((result) => {
+      if (result.data.data.info.text) {
+        clearInterval(timer.value)
+        timer.value = null
+        const serverResponseMessage = {
+          text: result.data.data.info.text,
+          isMine: false
+        }
+        messages.value.push(serverResponseMessage)
+        scrollToBottom()
+      }
+    })
+    .catch((error) => {
+      console.error('服务器请求失败:', error)
+    })
+}
+watch(inputText, () => {
+  if (inputText.value && messages.value.length > 0) {
+    scrollToBottom()
+  }
+})
+const open = () => {
+  drawer.value = true
+  nextTick(() => {
+    setTimeout(() => {
+      inputRef.value.focus()
+    }, 300)
+  })
+}
+defineExpose({
+  open
+})
+</script>
+<template>
+  <el-drawer v-model="drawer" :with-header="false" size="35%">
+    <div class="container">
+      <!-- 顶部标题 -->
+      <div class="topTitle">
+        <span>心灵沟通室</span>
+      </div>
+      <!-- 聊天区域 -->
+      <div class="chat" ref="chatList">
+        <div class="chat_list">
+          <li>
+            <img
+              src="@/assets/logo.png"
+              alt="接收者"
+              style="width: 50px; border-radius: 50%; border: 2px #fff solid"
+            />
+            <span class="leftChat">今天过的怎么样呀？</span>
+          </li>
+          <!-- 消息列表渲染 -->
+          <li
+            v-for="(message, index) in messages"
+            :key="index"
+            :class="message.isMine ? 'right' : 'left'"
+          >
+            <img
+              v-if="!message.isMine"
+              src="@/assets/logo.png"
+              alt="接收者"
+              style="width: 50px; border-radius: 50%; border: 2px #fff solid"
+            />
+            <span :class="message.isMine ? 'rightChat' : 'leftChat'">{{
+              message.text
+            }}</span>
+            <img
+              v-if="message.isMine"
+              :src="avatar"
+              alt="发送者"
+              style="width: 50px; border-radius: 50%; border: 2px #fff solid"
+            />
+          </li>
+        </div>
+      </div>
+      <!-- 底部固定 -->
+      <div class="bottom_div">
+        <!-- 发送消息 -->
+        <div class="send_box">
+          <div class="input_bg">
+            <input
+              v-model="inputText"
+              class="chat_input"
+              ref="inputRef"
+              type="text"
+              placeholder="说点什么吧"
+              @keyup.enter="sendMessage"
+            />
+          </div>
+          <img
+            class="send_img"
+            src="@/assets/send.png"
+            alt="发送"
+            @click="sendMessage"
+          />
+        </div>
+        <!-- 底部黑条 -->
+        <div class="black_border">
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </el-drawer>
+</template>
+<style scoped>
+li {
+  list-style: none;
+}
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(#d6f7ff, #fdfae8);
+  box-sizing: border-box;
+  padding: 0 20px;
+  border-radius: 8px;
+}
+.topTitle {
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #000;
+  font-size: 20px;
+  box-sizing: border-box;
+}
+.chat {
+  width: 100%;
+  height: 670px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 20px 0;
+  overflow-y: scroll;
+}
+.chat::-webkit-scrollbar {
+  display: none;
+}
+.chat_list li {
+  display: flex;
+  margin-top: 10px;
+}
+.chat .right {
+  display: flex;
+  justify-content: flex-end;
+}
+.leftChat {
+  margin-left: 10px;
+  border-radius: 1px 10px 1px 10px;
+  display: inline-block;
+  padding: 12px 16px;
+  background-image: linear-gradient(180deg, #b1e393 0%, #50d287 100%);
+  box-shadow: 2px 2px 10px 0px rgba(201, 201, 201, 0.1);
+  color: #ffffff;
+}
+.rightChat {
+  margin-right: 10px;
+  border-radius: 1px 10px 1px 10px;
+  display: inline-block;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(247, 247, 247, 1);
+  color: #000000;
+}
+.bottom_div {
+  width: 100%;
+  height: 89px;
+  margin-top: 15px;
+  background-color: #fff;
+  box-shadow: 0px -5px 7px 0px rgba(168, 168, 168, 0.05);
+  border-radius: 25px 25px 0px 0px;
+  padding: 15px 15px 0px 15px;
+  box-sizing: border-box;
+}
+.send_box {
+  display: flex;
+}
+.send_box img {
+  width: 34px;
+  height: 34px;
+  background-color: transparent;
+}
+.input_bg {
+  height: 35px;
+  background: #f3f3f3;
+  border-radius: 50px;
+  padding-left: 17px;
+  flex: 1;
+  margin-right: 15px;
+  display: flex;
+}
+.input_bg input {
+  border: 0;
+  outline: 0;
+  background-color: transparent;
+  display: inline-block;
+  width: 100%;
+}
+.black_border {
+  margin-top: 10px;
+  height: 34px;
+  text-align: center;
+}
+.black_border span {
+  display: inline-block;
+  background-color: #000;
+  width: 105px;
+  height: 4px;
+  border-radius: 50px;
+}
+</style>
+<script setup>
+import { ref, watch, markRaw } from 'vue'
+import logoBox from '@/components/commonComponents/LogoBox.vue' 
+import { Lock, Iphone, Key, Warning } from '@element-plus/icons-vue' 
+import { useUserStore } from '@/stores' 
+import {
+  getUserBasicInfoService,
+  postUserBasicInfoService,
+  postUserPasswordService,
+  getLogoutCodeService,
+  postLogoutService,
+  postLogoutByPasswordService,
+  postUserAvatarService
+} from '@/api/userCenter.js' 
+import {
+  User,
+  EditPen,
+  PictureRounded,
+  Promotion,
+  Clock,
+  SwitchButton,
+  Plus,
+  Upload
+} from '@element-plus/icons-vue' 
+import { ElMessage } from 'element-plus'
+const userStore = useUserStore()
+const token = userStore.basicUser.token
+const uid = userStore.basicUser.uid
+const drawerIsShow = ref(false)
+const handleUserCenter = () => {
+  drawerIsShow.value = true
+}
+const userBasicInfo = ref('')
+const getUserBasicInfo = async () => {
+  const res = await getUserBasicInfoService(token)
+  userBasicInfo.value = res.data.data
+  signature.value = userBasicInfo.value.signature
+  nickname.value = userBasicInfo.value.nickname
+  birthday.value = userBasicInfo.value.birthday
+  oldSignature.value = userBasicInfo.value.signature
+  oldUserId.value = userBasicInfo.value.user_id
+  oldNickname.value = userBasicInfo.value.nickname
+  oldBirthday.value = userBasicInfo.value.birthday
+  canChangeId.value = userBasicInfo.value.canChangeUserId
+  canChangeName.value = userBasicInfo.value.canChangeNickName
+  userId.value = userBasicInfo.value.user_id
+  imgUrl.value = userBasicInfo.value.avatar
+}
+getUserBasicInfo()
+const oldSignature = ref('')
+const signature = ref('')
+const oldUserId = ref('')
+const userId = ref('')
+const canChangeId = ref(true)
+const oldNickname = ref('')
+const nickname = ref('')
+const canChangeName = ref(true)
+const oldBirthday = ref('')
+const birthday = ref('')
+const amendData = ref({})
+const collectAmendedData = (currentData, oldData) => {
+  const result = {}
+  if (currentData.nickname !== oldData.nickname) {
+    result.nickname = currentData.nickname
+  }
+  if (currentData.userId !== oldData.userId) {
+    result.userId = currentData.userId
+  }
+  if (currentData.signature !== oldData.signature) {
+    result.signature = currentData.signature
+  }
+  if (currentData.birthday !== oldData.birthday) {
+    result.birthday = currentData.birthday
+  }
+  return result
+}
+const submitAmend = async () => {
+  amendData.value = collectAmendedData(
+    {
+      nickname: nickname.value,
+      userId: userId.value,
+      signature: signature.value, 
+      birthday: birthday.value 
+    },
+    {
+      nickname: oldNickname.value,
+      userId: oldUserId.value,
+      signature: oldSignature.value,
+      birthday: oldBirthday.value
+    }
+  )
+  if (Object.keys(amendData.value).length === 0) {
+    ElMessage.error('您还没有修改任何信息哦！')
+    return
+  }
+  const res = await postUserBasicInfoService(token, amendData.value)
+  ElMessage.success(res.data.msg)
+  getUserBasicInfo()
+}
+const disabledDate = (time) => {
+  return time.getTime() > Date.now()
+}
+const defaultActive = ref(userStore.defaultPage)
+watch(
+  () => userStore.defaultPage,
+  (newVal) => {
+    defaultActive.value = newVal
+  }
+)
+const flag = ref('1-1')
+const handleOpen = (key) => {
+  if (key == 1) {
+    flag.value = '1-1'
+    defaultActive.value = '1-1'
+    return
+  }
+  if (key == 2) {
+    return
+  }
+  flag.value = key
+}
+const handleMenuItemClick = (command) => {
+  flag.value = command.index
+}
+const uploadAvatar = ref()
+const imgUrl = ref(null)
+const uploadNewAvatarFile = ref(null)
+const onUploadFile = (uploadFile) => {
+  imgUrl.value = URL.createObjectURL(uploadFile.raw) 
+  uploadNewAvatarFile.value = uploadFile.raw 
+}
+const uploadAvatarImg = async () => {
+  const formData = new FormData()
+  formData.append('newAvatar', uploadNewAvatarFile.value) 
+  const res = await postUserAvatarService(token, formData)
+  ElMessage.success(res.data.msg)
+  userStore.basicUser.avatar = res.data.data.newAvatarUrl 
+  imgUrl.value = res.data.data.newAvatarUrl 
+}
+const formModel = ref({
+  phoneNum: '',
+  smsCode: '',
+  password: '',
+  old_pwd: '',
+  new_pwd: '',
+  re_pwd: ''
+})
+const formRef = ref()
+const checkOldSame = (rule, value, cb) => {
+  if (value === formModel.value.old_pwd) {
+    cb(new Error('原密码和新密码不能一样!'))
+  } else {
+    cb()
+  }
+}
+const checkNewSame = (rule, value, cb) => {
+  if (value !== formModel.value.new_pwd) {
+    cb(new Error('新密码和确认再次输入的新密码不一样!'))
+  } else {
+    cb()
+  }
+}
+const rules = {
+  phoneNum: [
+    { required: true, message: '请输入手机号码', trigger: 'blur' },
+    {
+      pattern: /^1[3-9]\d{9}$/,
+      message: '手机号码格式不正确',
+      trigger: 'blur'
+    }
+  ],
+  smsCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' },
+    {
+      pattern: /^\d{6}$/,
+      message: '验证码必须是6位数字',
+      trigger: 'blur'
+    }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[0-9])(?=.*[a-zA-Z])[0-9a-zA-Z]{8,15}$/,
+      message: '密码长度8-15位，包含字母和数字。',
+      trigger: 'blur'
+    }
+  ],
+  old_pwd: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[0-9])(?=.*[a-zA-Z])[0-9a-zA-Z]{8,15}$/,
+      message: '密码长度8-15位，包含字母和数字。',
+      trigger: 'blur'
+    }
+  ],
+  new_pwd: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[0-9])(?=.*[a-zA-Z])[0-9a-zA-Z]{8,15}$/,
+      message: '密码长度8-15位，包含字母和数字。',
+      trigger: 'blur'
+    },
+    { validator: checkOldSame, trigger: 'blur' }
+  ],
+  re_pwd: [
+    { required: true, message: '请再次确认新密码', trigger: 'blur' },
+    {
+      pattern: /^(?=.*[0-9])(?=.*[a-zA-Z])[0-9a-zA-Z]{8,15}$/,
+      message: '密码长度8-15位，包含字母和数字。',
+      trigger: 'blur'
+    },
+    { validator: checkNewSame, trigger: 'blur' }
+  ]
+}
+const onReset = () => {
+  formRef.value.resetFields()
+}
+const onSubmit = async () => {
+  const valid = await formRef.value.validate()
+  if (valid) {
+    const res = await postUserPasswordService(
+      token,
+      uid,
+      formModel.value.old_pwd,
+      formModel.value.new_pwd
+    )
+    ElMessage.success(res.data.msg)
+    userStore.setIsLoginOut()
+    userStore.setIsLogin()
+  }
+}
+const password = ref('')
+const old_pwd = ref('')
+const new_pwd = ref('')
+const re_pwd = ref('')
+const handleEnter = (oldValue, newValue) => {
+  if (oldValue === phoneNum.value) {
+    getLogoutCode()
+  }
+  oldValue.blur()
+  newValue.focus()
+}
+const isPhoneLogin = ref(false)
+const phoneNum = ref('')
+const smsCode = ref('')
+const countDownTwo = ref(60)
+const form = ref(null)
+const handleMsgLogout = async () => {
+  await form.value.validate()
+  const res = await postLogoutService(
+    formModel.value.phoneNum,
+    formModel.value.smsCode
+  )
+  ElMessage.success(res.data.msg)
+  location.reload()
+}
+const handleDelete = async () => {
+  const res = await postLogoutByPasswordService(
+    formModel.value.phoneNum,
+    formModel.value.password
+  )
+  ElMessage.success(res.data.msg)
+}
+const getLogoutCode = async () => {
+  if (formModel.value.phoneNum === '') {
+    ElMessage.error('请输入手机号码')
+    return
+  }
+  const res = await getLogoutCodeService(formModel.value.phoneNum)
+  ElMessage.success(res.data.msg)
+  let count = 60
+  const timer = setInterval(() => {
+    count--
+    countDownTwo.value = count
+    if (count === 0) {
+      clearInterval(timer)
+      countDownTwo.value = 60
+    }
+  }, 1000)
+}
+const handleMsgDelete = () => {
+  ElMessageBox.confirm(
+    '一旦注销账号，账号记录会被清空，请谨慎选择',
+    '警告！！！',
+    {
+      confirmButtonText: '确定注销',
+      cancelButtonText: '取消注销',
+      type: 'Warning',
+      icon: markRaw(Warning)
+    }
+  )
+    .then(() => {
+      handleMsgLogout()
+      userStore.setIsLoginOut()
+    })
+    .catch(() => {
+      ElMessage({
+        type: 'info',
+        message: '取消注销'
+      })
+    })
+}
+const handleCodeDelete = () => {
+  ElMessageBox.confirm(
+    '一旦注销账号，账号记录会被清空，请谨慎选择',
+    '警告！！！',
+    {
+      confirmButtonText: '确定注销',
+      cancelButtonText: '取消注销',
+      type: 'Warning',
+      icon: markRaw(Warning)
+    }
+  )
+    .then(() => {
+      handleDelete()
+      userStore.setIsLoginOut()
+    })
+    .catch(() => {
+      ElMessage({
+        type: 'info',
+        message: '取消注销'
+      })
+    })
+}
+defineExpose({
+  handleUserCenter
+})
+</script>
+<template>
+  <el-drawer v-model="drawerIsShow" :with-header="false" size="42%">
+    <!-- <el-menu  
+  active-text-color="#ffd04b"    当前激活的菜单项的文本颜色 
+  background-color="#545c64"      菜单的背景颜色
+  class="el-menu-vertical-demo" 自定义的 CSS 类名，用于样式定制
+  default-active="2"             默认激活的菜单项的索引
+  text-color="#fff"              菜单项的文本颜色
+  @open="handleOpen"             当子菜单打开时触发的事件
+  @close="handleClose"           当子菜单关闭时触发的事件
+     -->
+    <el-row class="drawer">
+      <el-col :span="7">
+        <div class="tabBox">
+          <logoBox></logoBox>
+          <el-menu
+            class="tab"
+            :default-active="defaultActive"
+            @open="handleOpen"
+            unique-opened="true"
+          >
+            <el-sub-menu index="1">
+              <template #title>
+                <el-icon><User /></el-icon>
+                <span>个人中心</span>
+              </template>
+              <el-menu-item index="1-1" @click="handleMenuItemClick">
+                <template #title>
+                  <el-icon><User /></el-icon>
+                  <span>基本资料</span>
+                </template></el-menu-item
+              >
+              <el-menu-item index="1-2" @click="handleMenuItemClick">
+                <template #title>
+                  <el-icon><PictureRounded /></el-icon>
+                  <span>更换头像</span>
+                </template></el-menu-item
+              >
+              <el-menu-item index="1-3" @click="handleMenuItemClick">
+                <template #title>
+                  <el-icon><EditPen /></el-icon>
+                  <span>重置密码</span>
+                </template></el-menu-item
+              >
+            </el-sub-menu>
+            <el-sub-menu index="2">
+              <template #title>
+                <el-icon><Promotion /></el-icon>
+                <span>个人发布</span>
+              </template>
+              <el-menu-item index="2-1" @click="handleMenuItemClick"
+                >个人发布</el-menu-item
+              >
+              <el-menu-item index="2-2" @click="handleMenuItemClick"
+                >个人日记</el-menu-item
+              >
+              <el-menu-item index="2-3" @click="handleMenuItemClick"
+                >个人点赞</el-menu-item
+              >
+            </el-sub-menu>
+            <el-menu-item index="3" @click="handleMenuItemClick">
+              <el-icon><Clock /></el-icon>
+              <span>浏览记录</span>
+            </el-menu-item>
+            <el-menu-item index="4" @click="handleMenuItemClick">
+              <el-icon><SwitchButton /></el-icon>
+              <span>注销账号</span>
+            </el-menu-item>
+          </el-menu>
+        </div>
+      </el-col>
+      <el-col
+        :span="17"
+        style="display: flex; align-items: center; justify-content: center"
+        ><div v-if="flag == '1-1'" class="basicIfo">
+          <img :src="imgUrl" />
+          <ul>
+            <el-tooltip
+              content="昵称一个月只能修改一次哦！"
+              placement="left"
+              effect="light"
+            >
+              <li>
+                用户昵称：
+                <el-input
+                  v-model="nickname"
+                  style="width: 200px"
+                  clearable
+                  :placeholder="userBasicInfo.nickname"
+                  :disabled="!canChangeName"
+                />
+              </li>
+            </el-tooltip>
+            <el-tooltip
+              content="用户ID作为用户唯一标识，只能修改一次哦！"
+              placement="left"
+              effect="light"
+            >
+              <li>
+                用户 ID ：
+                <el-input
+                  v-model="userId"
+                  style="width: 200px"
+                  clearable
+                  :placeholder="userBasicInfo.user_id"
+                  :disabled="!canChangeId"
+                />
+              </li>
+            </el-tooltip>
+            <el-tooltip
+              effect="light"
+              content="若生日信息有误，点击日历可修改日期哦！"
+              placement="left"
+            >
+              <li>
+                生日时间：
+                <el-date-picker
+                  v-model="birthday"
+                  type="date"
+                  placeholder="选择日期"
+                  :size="large"
+                  :disabled-date="disabledDate"
+                  value-format="YYYY-MM-DD"
+                  style="width: 200px"
+                />
+              </li>
+            </el-tooltip>
+            <li>个性签名</li>
+            <el-input
+              v-model="signature"
+              style="width: 290px"
+              resize="none"
+              :autosize="{ minRows: 5, maxRows: 5 }"
+              type="textarea"
+              :placeholder="userBasicInfo.signature"
+            />
+          </ul>
+          <el-button type="primary" @click="submitAmend">保存修改</el-button>
+        </div>
+        <div v-if="flag == '1-2'" class="changeAvatar">
+          <el-upload
+            class="avatar-uploader"
+            ref="uploadAvatar"
+            :auto-upload="false"
+            :show-file-list="false"
+            :on-change="onUploadFile"
+            accept="image/*"
+          >
+            <img v-if="imgUrl" :src="imgUrl" class="avatar" />
+            <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
+          </el-upload>
+          <div class="updateButton">
+            <el-button
+              @click="uploadAvatar.$el.querySelector('input').click()"
+              type="primary"
+              :icon="Plus"
+              size="large"
+            >
+              选择图片
+            </el-button>
+            <el-button
+              type="success"
+              :icon="Upload"
+              size="large"
+              @click="uploadAvatarImg"
+            >
+              上传头像
+            </el-button>
+          </div>
+        </div>
+        <div v-if="flag == '1-3'" class="changePassword">
+          <img
+            :src="imgUrl"
+            style="
+              width: 150px;
+              border-radius: 50%;
+              margin-top: 50px;
+              border: 2px solid #e1e4eb;
+              margin-bottom: 50px;
+            "
+          />
+          <el-form
+            :model="formModel"
+            :rules="rules"
+            ref="formRef"
+            label-width="100px"
+            size="large"
+          >
+            <el-form-item label="原密码" prop="old_pwd">
+              <el-input
+                v-model="formModel.old_pwd"
+                ref="old_pwd"
+                type="password"
+                show-password
+                style="width: 200px"
+                @keyup.enter="handleEnter(old_pwd, new_pwd)"
+              ></el-input>
+            </el-form-item>
+            <el-form-item label="新密码" prop="new_pwd">
+              <el-input
+                v-model="formModel.new_pwd"
+                ref="new_pwd"
+                type="password"
+                show-password
+                style="width: 200px"
+                @keyup.enter="handleEnter(new_pwd, re_pwd)"
+              ></el-input>
+            </el-form-item>
+            <el-form-item
+              label="确认新密码"
+              prop="re_pwd"
+              @keyup.enter="onSubmit"
+            >
+              <el-input
+                v-model="formModel.re_pwd"
+                type="password"
+                ref="re_pwd"
+                show-password
+                style="width: 200px"
+              ></el-input>
+            </el-form-item>
+            <el-form-item>
+              <el-button @click="onSubmit" type="primary">修改密码</el-button>
+              <el-button @click="onReset">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+        <div v-if="flag == '2-1'">2-1</div>
+        <div v-if="flag == '2-2'">2-2</div>
+        <div v-if="flag == '2-3'">2-3</div>
+        <div v-if="flag == 3">3</div>
+        <div v-if="flag == 4" class="cancelAccount">
+          <img
+            :src="imgUrl"
+            style="
+              width: 150px;
+              border-radius: 50%;
+              margin-top: 50px;
+              border: 2px solid #e1e4eb;
+              margin-bottom: 50px;
+            "
+          />
+          <!-- 一下是注销的代码 -->
+          <el-form
+            class="loginModule"
+            :model="formModel"
+            :rules="rules"
+            ref="form"
+          >
+            <!-- 头部导航栏 -->
+            <div class="titleForm">
+              <el-space :size="5" :spacer="spacer">
+                <el-button
+                  link
+                  size="large"
+                  @click="isPhoneLogin = false"
+                  :style="{ color: isPhoneLogin ? '#a8abb2' : '#409eff' }"
+                  style="margin: 20px 0px; font-size: 20px"
+                  >密码注销
+                </el-button>
+                <el-button
+                  link
+                  size="large"
+                  @click="isPhoneLogin = true"
+                  :style="{ color: isPhoneLogin ? '#409eff' : '#a8abb2' }"
+                  style="margin: 20px 0px; font-size: 20px"
+                  >短信注销</el-button
+                >
+              </el-space>
+            </div>
+            <!-- 下面是短信登录的代码 -->
+            <div class="phoneLogin" v-if="isPhoneLogin">
+              <el-form-item prop="phoneNum">
+                <el-input
+                  v-model="formModel.phoneNum"
+                  size="large"
+                  class="phone-element"
+                  :prefix-icon="Iphone"
+                  style="width: 300px; height: 42px"
+                  placeholder="请输入手机号码"
+                  ref="phoneNum"
+                  @keyup.enter="handleEnter(phoneNum, smsCode)"
+                >
+                  <template #suffix>
+                    <div>|</div>
+                    <span
+                      style="cursor: pointer"
+                      ref="CodeButton"
+                      @click="getLogoutCode"
+                      >{{
+                        countDownTwo === 60
+                          ? '获取验证码'
+                          : `重新发送(${countDownTwo})`
+                      }}</span
+                    >
+                  </template>
+                </el-input>
+              </el-form-item>
+              <el-form-item prop="smsCode">
+                <el-input
+                  v-model="formModel.smsCode"
+                  size="large"
+                  :prefix-icon="Key"
+                  placeholder="请输入验证码"
+                  ref="smsCode"
+                  @keyup.enter="handleMsgDelete"
+                ></el-input>
+              </el-form-item>
+              <el-form-item>
+                <el-button
+                  style="width: 100%"
+                  type="primary"
+                  @click="handleMsgDelete"
+                  >注销</el-button
+                >
+              </el-form-item>
+            </div>
+            <!-- 下面是密码登录的代码 -->
+            <div class="CodeLogin" v-else>
+              <el-form-item prop="phoneNum">
+                <el-input
+                  size="large"
+                  class="phone-element"
+                  v-model="formModel.phoneNum"
+                  :prefix-icon="Iphone"
+                  placeholder="请输入手机号码"
+                  style="width: 300px; height: 42px"
+                  ref="phoneNum"
+                  @keyup.enter="handleEnter(phoneNum, password)"
+                >
+                </el-input>
+              </el-form-item>
+              <el-form-item prop="password">
+                <el-input
+                  size="large"
+                  :prefix-icon="Lock"
+                  v-model="formModel.password"
+                  placeholder="请输入密码"
+                  type="password"
+                  ref="password"
+                  @keyup.enter="handleCodeDelete"
+                >
+                </el-input>
+              </el-form-item>
+              <el-form-item>
+                <el-button
+                  style="width: 100%"
+                  type="primary"
+                  @click="handleCodeDelete"
+                  >注销</el-button
+                >
+              </el-form-item>
+            </div>
+          </el-form>
+        </div></el-col
+      >
+    </el-row>
+  </el-drawer>
+</template>
+<style scoped>
+.drawer {
+  height: 798px;
+  width: 100%;
+  border-radius: 8px;
+  box-sizing: border-box;
+  background: linear-gradient(#d6f7ff, #fdfae8);
+}
+.tabBox {
+  box-sizing: border-box;
+  height: 800px;
+  width: 198px;
+  padding-top: 30px;
+  border-right: 1px solid #dcdfe6;
+}
+.tab {
+  border: none;
+  background-color: transparent;
+  margin-top: 20px;
+}
+.basicIfo {
+  height: 700px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  box-sizing: border-box;
+  border-radius: 8px;
+}
+.basicIfo img {
+  width: 150px;
+  border-radius: 50%;
+  margin-top: 50px;
+  border: 2px solid #e1e4eb;
+}
+.basicIfo ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.basicIfo ul li {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.changeAvatar {
+  height: 700px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  box-sizing: border-box;
+  border-radius: 8px;
+  color: #000;
+  font-size: 18px;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.changeAvatar .avatar-uploader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 2px dashed #dcdfe6;
+  margin-top: 50px;
+}
+.changeAvatar .avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+.changePassword {
+  height: 700px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  border-radius: 8px;
+  color: #000;
+  font-size: 20px;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.cancelAccount {
+  height: 700px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  border-radius: 8px;
+  color: #000;
+  font-size: 20px;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.titleForm {
+  justify-content: center;
+  display: flex;
+  flex: 1;
+  font-size: var(--font-size);
+  line-height: 28px;
+  min-width: 0;
+  position: relative;
+  box-sizing: border-box;
+}
+</style>
+<script lang="ts" setup>
+import { ArrowRightBold } from '@element-plus/icons-vue'
+</script>
+<template>
+  <div class="containerBox">
+    <div class="userIco">
+      <slot></slot>
+    </div>
+    <el-icon><ArrowRightBold /></el-icon>
+  </div>
+</template>
+<style>
+.containerBox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 30px;
+  width: 220px;
+  border-radius: 8px;
+  margin: 1px 20px;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.containerBox:hover {
+  background-color: #e3e5e7;
+}
+.containerBox .userIco {
+  display: flex;
+  width: 90px;
+  height: 25px;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+}
+.containerBox .userIco img {
+  height: 20px;
+}
+.containerBox .userIco span {
+  font-size: 16x;
+}
+</style>
+<script setup></script>
+<template>
+  <div class="otherWayLoginBox">
+    <span>其它方式登录</span>
+    <div class="otherWayLogin">
+      <el-link :underline="false" class="el-link">微信登录</el-link>
+      <el-link :underline="false" class="el-link">微博登录</el-link>
+      <el-link :underline="false" class="el-link">QQ登录</el-link>
+    </div>
+  </div>
+</template>
+<style scoped>
+.otherWayLoginBox {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.otherWayLoginBox span {
+  font-size: 14px;
+  color: #a8abb2;
+  user-select: none;
+  margin: 10px 0px;
+}
+.otherWayLoginBox .otherWayLogin {
+  display: flex;
+  width: 100%;
+  margin: 10px 0 35px 0px;
+}
+.otherWayLoginBox .otherWayLogin .el-link {
+  width: 88.4px;
+  box-sizing: border-box;
+  user-select: none;
+}
+.otherWayLoginBox .otherWayLogin .el-link:nth-child(1)::before {
+  content: '';
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  background: url('@/assets/wechat.png') no-repeat;
+  background-size: 100%;
+  margin-right: 3px;
+}
+.otherWayLoginBox .otherWayLogin .el-link:nth-child(2)::before {
+  content: '';
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  background: url('@/assets/MicroBlog.png') no-repeat;
+  background-size: 100%;
+  margin: 0 2px;
+}
+.otherWayLoginBox .otherWayLogin .el-link:nth-child(3)::before {
+  content: '';
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  background: url('@/assets/qq.png') no-repeat;
+  background-size: 100%;
+  margin-right: 4px;
+}
+</style>
+<scrip setup></scrip>
+<template>
+  <div class="recommendBoxTop">
+    <slot name="title"></slot>
+    <slot name="icon"></slot>
+  </div>
+</template>
+<style scoped>
+.recommendBoxTop {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+}
+.recommendBoxTop p {
+  font-size: 25px;
+  color: #000000;
+  line-height: 40px;
+  margin: 0 10px;
+}
+.recommendBoxTop img {
+  width: 40px;
+  height: 40px;
+  margin: 0 10px;
+}
+</style>
+<script setup></script>
+<template>
+  <div class="recommendBox">
+    <div class="recommendBoxTop">
+      <slot name="title"></slot>
+      <slot name="icon"></slot>
+    </div>
+    <div class="recommendBoxBottom">
+      <slot name="body"></slot>
+    </div>
+  </div>
+</template>
+<style>
+.recommendBox {
+  margin: 0 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s;
+}
+.recommendBox:hover {
+  transform: scale(0.95);
+  background: linear-gradient(#d6f7ff, #fff);
+}
+.recommendBoxTop {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+}
+.recommendBoxTop p {
+  font-size: 25px;
+  color: #000000;
+  line-height: 40px;
+  margin: 0 10px;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.recommendBoxTop img {
+  width: 40px;
+  height: 40px;
+  margin: 0 10px;
+}
+.recommendBoxBottom {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  height: 330px;
+  padding: 0 20px 15px 20px;
+}
+.recommendBoxBottom img {
+  width: 67%;
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.2),
+     -4px 0 8px rgba(0, 0, 0, 0.1),
+     4px 0 8px rgba(0, 0, 0, 0.1); 
+}
+.book-brief {
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  max-width: 100%; 
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.sentence-content {
+  font-size: 22px;
+  line-height: 40px;
+  text-indent: 2em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6; 
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 92%;
+}
+.article-content {
+  text-indent: 2em;
+  font-size: 20px;
+  line-height: 28px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7; 
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+</style>
+<script setup>
+import { ref, watch } from 'vue'
+import {
+  submitDailyQuestionService,
+  getDailyQuestionService
+} from '@/api/homePage' 
+import { useUserStore } from '@/stores' 
+import { Clock } from '@element-plus/icons-vue'
+const userStore = useUserStore() 
+const token = userStore.basicUser.token 
+const drawerIsShow = ref(false)
+const radio = ref(null)
+const openDrawer = () => {
+  drawerIsShow.value = true
+}
+const input = ref(null)
+const handleInput = () => {
+  radio.value = null 
+}
+const props = defineProps({
+  message: {
+    type: Object,
+    required: true
+  }
+})
+const parsedContent = ref('') 
+const parseContent = (content) => {
+  return content
+    .split('\n') 
+    .map((item) => {
+      return `<p>${item.trim()}</p>`
+    })
+    .join('') 
+}
+const updateParsedContent = () => {
+  const articleContent = parseContent(
+    props.message.content || props.message.brief || ''
+  )
+  parsedContent.value = articleContent
+}
+watch(
+  () => props.message.content,
+  (newContent, oldContent) => {
+    if (newContent !== oldContent) {
+      updateParsedContent()
+    }
+  }
+)
+watch(
+  () => props.message.brief,
+  (newContent, oldContent) => {
+    if (newContent !== oldContent) {
+      updateParsedContent()
+    }
+  }
+)
+const textarea = ref(null)
+const minutes = ref(0)
+const seconds = ref(0)
+const timer = ref(null)
+watch(
+  () => radio.value,
+  (val) => {
+    if (val) {
+      minutes.value = val
+    }
+  }
+)
+const startCountDown = () => {
+  if (minutes.value > 120 || minutes.value < 10 || minutes.value % 1 !== 0) {
+    ElMessage.error('倒计时时间范围为10至120分钟的整数')
+    return
+  }
+  if (!timer.value) {
+    timer.value = setInterval(() => {
+      if (minutes.value === 0 && seconds.value === 0) {
+        clearInterval(timer.value)
+        timer.value = null
+        radio.value = null
+        ElMessage.success('倒计时结束')
+        return
+      }
+      if (seconds.value === 0) {
+        seconds.value = 60
+        minutes.value--
+      }
+      seconds.value--
+    }, 1000)
+  }
+}
+const getDailyQuestion = async () => {
+  const res = await getDailyQuestionService(token)
+  textarea.value = res.data.data.answer
+}
+const handleSaveAnswer = async () => {
+  const answer = textarea.value.trim()
+  if (answer === '') {
+    ElMessage.error('答案不能为空')
+    textarea.value = ''
+    return
+  }
+  clearInterval(timer.value)
+  timer.value = null
+  seconds.value = 0
+  radio.value = null
+  const res = await submitDailyQuestionService(token, answer)
+  ElMessage.success(res.data.msg)
+  getDailyQuestion() 
+}
+defineExpose({
+  openDrawer
+})
+</script>
+<template>
+  <el-drawer
+    v-model="drawerIsShow"
+    :with-header="false"
+    size="40%"
+    class="drawer"
+  >
+    <div class="contentDetails">
+      <div class="contentDetailsImg">
+        <img v-if="message.coverImg" :src="message.coverImg" />
+        <img
+          v-if="message.paintWork"
+          :src="message.paintWork"
+          style="width: 470px"
+        />
+        <li
+          v-if="message.title"
+          style="
+            font-size: 20px;
+            font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+          "
+        >
+          《{{ message.title }}》
+        </li>
+        <li v-if="message.author">作者：{{ message.author }}</li>
+        <li v-if="message.painter">作者：{{ message.painter }}</li>
+        <div
+          v-if="message.question"
+          style="
+            font-size: 25px;
+            font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+          "
+        >
+          {{ message.question }}
+        </div>
+      </div>
+      <li
+        class="contentDetailsBrief"
+        v-if="message.brief"
+        v-html="parsedContent"
+      ></li>
+      <li
+        class="contentDetailsContent"
+        v-if="message.content"
+        v-html="parsedContent"
+      ></li>
+      <el-tooltip
+        class="box-item"
+        effect="light"
+        :disabled="timer ? true : false"
+        content="开始倒计时后才可以填写喔！"
+        placement="bottom"
+      >
+        <el-input
+          v-if="message.question"
+          v-model="textarea"
+          style="
+            width: 100%;
+            font-size: 18px;
+            font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+          "
+          resize="none"
+          :autosize="{ minRows: 8, maxRows: 8 }"
+          type="textarea"
+          :disabled="!timer ? true : false"
+          :placeholder="
+            message.answer ? message.answer : '请写下你心中的填写答案吧'
+          "
+        />
+      </el-tooltip>
+      <div v-if="message.question" class="countDownScreen">
+        {{
+          radio
+            ? `倒计时：${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+            : '请在下方选择你填写的时间'
+        }}
+      </div>
+      <div v-if="message.question" class="countdown">
+        <div style="width: 80%">
+          <el-radio-group v-model="radio">
+            <el-row>
+              <el-col :span="8">
+                <el-radio
+                  :value="10"
+                  border
+                  size="large"
+                  class="radio"
+                  :disabled="timer ? true : false"
+                  >10minutes</el-radio
+                ></el-col
+              >
+              <el-col :span="8"
+                ><el-radio
+                  :value="20"
+                  border
+                  size="large"
+                  class="radio"
+                  :disabled="timer ? true : false"
+                  >20minutes</el-radio
+                ></el-col
+              >
+              <el-col :span="8"
+                ><el-radio
+                  :value="30"
+                  border
+                  size="large"
+                  class="radio"
+                  :disabled="timer ? true : false"
+                  >30minutes</el-radio
+                ></el-col
+              >
+            </el-row>
+            <el-row>
+              <el-col :span="8"
+                ><el-radio
+                  :value="40"
+                  border
+                  size="large"
+                  class="radio"
+                  :disabled="timer ? true : false"
+                  >40minutes</el-radio
+                ></el-col
+              >
+              <el-col :span="8">
+                <el-radio
+                  :value="60"
+                  border
+                  size="large"
+                  class="radio"
+                  :disabled="timer ? true : false"
+                  >60minutes</el-radio
+                ></el-col
+              >
+              <el-col :span="8">
+                <el-input
+                  style="
+                    height: 40px;
+                    box-sizing: border-box;
+                    border-radius: var(--el-border-radius-base);
+                    font-size: 16px;
+                  "
+                  class="radio"
+                  :disabled="timer ? true : false"
+                  ref="input"
+                  :prefix-icon="Clock"
+                  v-model="radio"
+                  @click="handleInput"
+                  placeholder="自定义"
+              /></el-col>
+            </el-row>
+          </el-radio-group>
+        </div>
+      </div>
+      <div>
+        <el-button
+          v-if="message.question"
+          type="primary"
+          style="margin: 0 50px 20px 20px"
+          @click="startCountDown"
+          :disabled="timer ? true : false"
+          >开始倒计时</el-button
+        >
+        <el-tooltip
+          class="box-item"
+          effect="light"
+          :disabled="timer ? true : false"
+          content="填写答案后才可以保存喔！"
+          placement="top"
+        >
+          <el-button
+            v-if="message.question"
+            type="primary"
+            style="margin: 0 20px 20px 50px"
+            :disabled="!timer ? true : false"
+            @click="handleSaveAnswer"
+            >保存答案</el-button
+          >
+        </el-tooltip>
+      </div>
+    </div>
+  </el-drawer>
+</template>
+<style>
+li {
+  list-style: none;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.contentDetails {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  min-height: 798px;
+  width: 100%;
+  min-width: 300px;
+  box-sizing: border-box;
+  padding: 10% 8% 0 8%;
+  background: linear-gradient(#d6f7ff, #fdfae8);
+  border-radius: 8px;
+}
+.contentDetailsImg {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.contentDetailsImg img {
+  width: 200px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  margin-bottom: 10px;
+}
+.contentDetailsImg li {
+  margin-top: 10px;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+}
+.contentDetailsBrief {
+  margin-top: 20px;
+  font-size: 18px;
+  text-indent: 2em;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+  line-height: 30px;
+  padding-bottom: 30px;
+}
+.countdown {
+  width: 100%;
+  height: 150px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+.radio {
+  width: 80%;
+  box-sizing: border-box;
+  margin: 10px 20px;
+  font-size: 18px;
+  overflow: hidden;
+}
+.countDownScreen {
+  width: 100%;
+  height: 100px;
+  font-size: 30px;
+  line-height: 100px;
+  text-align: center;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+.contentDetailsContent {
+  font-size: 18px;
+  text-indent: 2em;
+  font-family: 'SimSun', '宋体', 'Microsoft YaHei';
+  line-height: 30px;
+  padding-bottom: 30px;
+}
+</style>
+<script setup>
+import { ref } from 'vue'
+import { Plus } from '@element-plus/icons-vue'
+import { QuillEditor } from '@vueup/vue-quill' 
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { submitPostService } from '@/api/userCommunity.js' 
+import { useUserStore } from '@/stores' 
+import { ElMessage } from 'element-plus'
+const userStore = useUserStore() 
+const props = defineProps({
+  message: Number
+})
+const token = userStore.basicUser.token 
+const imgUrl = ref('') 
+const beforeUpload = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const width = img.width
+        const height = img.height
+        const aspectRatio = width / height
+        if (Math.abs(aspectRatio - 16 / 9) > 0.01) {
+          reject('图片比例不符合要求')
+        } else {
+          resolve(file)
+        }
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
+const onUploadFile = async (uploadFile) => {
+  try {
+    const validFile = await beforeUpload(uploadFile.raw)
+    imgUrl.value = URL.createObjectURL(validFile)
+    coverImg.value = validFile
+  } catch (error) {
+    console.error('图片比例不符合要求：', error)
+    ElMessage.warning('仅支持16:9比例的图片哦！')
+  }
+}
+const fileList = ref([])
+const uploadFileList = ref([])
+const beforeFileUpload = (file) => {
+  if (fileList.value.length > 9) {
+    ElMessage.warning('最多上传9张图片')
+    return false
+  }
+  const isLt5M = file.size / 1024 / 1024 < 5
+  if (!isLt5M) {
+    ElMessage.warning('上传图片大小不能超过 5MB!')
+    return false
+  }
+  return true
+}
+const onUploadMultipleFile = (uploadFile) => {
+  fileList.value.push({
+    name: uploadFile.raw.name,
+    url: URL.createObjectURL(uploadFile.raw)
+  }) 
+  uploadFileList.value.push(uploadFile.raw) 
+  console.log(uploadFileList.value.length)
+  uploadFileList.value.forEach((item) => {
+    console.log(item)
+  })
+}
+const handleExceed = () => {
+  ElMessage.warning('最多上传9张图片')
+  return false
+}
+const dialogImageUrl = ref('')
+const dialogVisible = ref(false)
+const handleRemove = (file) => {
+  console.log(file, fileList.value)
+  uploadFileList.value.splice(-1, 1) 
+}
+const handlePictureCardPreview = (file) => {
+  dialogImageUrl.value = file.url
+  dialogVisible.value = true
+}
+const isPostDrawer = ref(false)
+const openPostDrawer = () => {
+  isPostDrawer.value = true
+}
+const title = ref('') 
+const coverImg = ref(null) 
+const content = ref('') 
+const uploadType = ref(0) 
+const blockType = ref(0) 
+const handleSubPost = async (number) => {
+  if (!title.value || !coverImg.value || !content.value) {
+    ElMessage.warning('请填写完整信息再提交哦！')
+    return
+  }
+  uploadType.value = number 
+  const formData = new FormData()
+  formData.append('title', title.value)
+  formData.append('coverImg', coverImg.value)
+  formData.append('content', content.value)
+  if (uploadFileList.value.length > 0) {
+    uploadFileList.value.forEach((item) => {
+      formData.append('pictures', item)
+      console.log(item)
+    })
+  }
+  formData.append('uploadType', uploadType.value)
+  formData.append('blockType', blockType.value)
+  console.log(content.value)
+  const res = await submitPostService(token, formData)
+  ElMessage.success(res.data.msg)
+  isPostDrawer.value = false
+}
+defineExpose({
+  openPostDrawer
+})
+</script>
+<template>
+  <el-drawer v-model="isPostDrawer" :with-header="false" size="40%">
+    <div class="drawer">
+      <el-form :model="postFormModel" ref="formRef" label-width="100px">
+        <el-form-item
+          :label="props.message === 1 ? '帖子标题' : '日记标题'"
+          prop="title"
+        >
+          <el-input
+            v-model="title"
+            size="large"
+            placeholder="请输入标题"
+          ></el-input>
+        </el-form-item>
+        <el-form-item
+          label="屏蔽类型"
+          prop="blockType"
+          v-if="props.message === 1"
+          ><el-select
+            v-model.number="blockType"
+            placeholder="请选择屏蔽类型"
+            size="large"
+          >
+            <el-option label="全部可见" :value="0" />
+            <el-option label="仅订阅可见" :value="1" />
+            <el-option label="仅订阅不可见" :value="2" /> </el-select
+        ></el-form-item>
+        <el-form-item
+          label="屏蔽类型"
+          prop="blockType"
+          v-if="props.message === 2"
+          ><el-select
+            v-model.number="blockType"
+            placeholder="请选择屏蔽类型"
+            size="large"
+          >
+            <el-option label="全部可见" :value="0" />
+            <el-option label="仅订阅可见" :value="1" />
+            <el-option label="仅订阅不可见" :value="2" />
+            <el-option label="仅自己可见" :value="3" /> </el-select
+        ></el-form-item>
+        <el-form-item
+          :label="props.message === 1 ? '帖子封面' : '日记封面'"
+          prop="coverImg"
+          ><el-upload
+            class="avatar-uploader"
+            :show-file-list="false"
+            :on-change="onUploadFile"
+            :before-upload="beforeUpload"
+            accept="image/*"
+            :auto-upload="false"
+          >
+            <img
+              v-if="imgUrl"
+              :src="imgUrl"
+              style="
+                /* width: 500px; */
+                height: 178px;
+                text-align: center;
+                border: 1px dashed var(--el-border-color);
+                border-radius: 8px;
+              "
+            />
+            <el-icon
+              v-else
+              class="avatar-uploader-icon"
+              style="height: 178px; width: 316.5px"
+              ><Plus
+            /></el-icon> </el-upload
+        ></el-form-item>
+        <el-form-item
+          :label="props.message === 1 ? '帖子配图' : '日记配图'"
+          prop="pictures"
+        >
+          <el-upload
+            v-model:file-list="fileList"
+            list-type="picture-card"
+            :on-preview="handlePictureCardPreview"
+            :on-remove="handleRemove"
+            :before-upload="beforeFileUpload"
+            :on-change="onUploadMultipleFile"
+            :limit="9"
+            :on-exceed="handleExceed"
+            accept="image/*"
+            :auto-upload="false"
+          >
+            <el-icon><Plus /></el-icon>
+          </el-upload>
+          <el-dialog v-model="dialogVisible" style="width: 600px">
+            <img
+              style="width: 100%; border-radius: 8px"
+              :src="dialogImageUrl"
+              alt="Preview Image"
+            /> </el-dialog
+        ></el-form-item>
+        <el-form-item
+          :label="props.message === 1 ? '帖子内容' : '日记内容'"
+          prop="content"
+        >
+          <div class="editor">
+            <quill-editor
+              theme="snow"
+              v-model:content="content"
+              contentType="html"
+            >
+            </quill-editor>
+          </div>
+        </el-form-item>
+        <el-form-item class="button" v-if="props.message === 1">
+          <el-button
+            type="primary"
+            style="margin-right: 10%"
+            @click="handleSubPost(0)"
+            >发布帖子</el-button
+          >
+          <el-button type="info" @click="handleSubPost(1)">存为草稿</el-button>
+        </el-form-item>
+        <el-form-item class="button" v-if="props.message === 2">
+          <el-button
+            type="primary"
+            style="margin-right: 10%"
+            @click="handleSubPost(2)"
+            >发布帖子</el-button
+          >
+          <el-button type="info" @click="handleSubPost(3)">存为草稿</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+  </el-drawer>
+</template>
+<style lang="scss" scoped>
+.drawer {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  min-height: 798px;
+  width: 100%;
+  min-width: 300px;
+  box-sizing: border-box;
+  padding: 5% 8% 0 0;
+  background: linear-gradient(#d6f7ff, #fdfae8);
+  border-radius: 8px;
+}
+.avatar-uploader {
+  :deep() {
+    .avatar {
+      width: 178px;
+      height: 178px;
+      display: block;
+    }
+  }
+}
+.avatar-uploader .el-upload {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: var(--el-transition-duration-fast);
+}
+.avatar-uploader .el-upload:hover {
+  border-color: var(--el-color-primary);
+}
+.avatar-uploader .el-icon.avatar-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 178px;
+  height: 178px;
+  text-align: center;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 8px;
+}
+.editor {
+  width: 100%;
+  :deep(.ql-editor) {
+    min-height: 150px;
+  }
+}
+</style>
+<script setup></script>
+<template>
+  <div class="logo">
+    <img src="@/assets/logo.png" alt="Element logo" />
+    <span>Mirror Heart</span>
+  </div>
+</template>
+<style scoped>
+.logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.logo img {
+  width: 35px;
+  margin-right: 10px;
+  margin-bottom: 5px;
+}
+.logo span {
+  font-size: 18px;
+  user-select: none;
+}
+</style>
+<script setup>
+import { ref } from 'vue'
+import {
+  getFirstCommentService, 
+  getSecondCommentService, 
+  likeCommentService 
+} from '@/api/userCommunity.js'
+import { useUserStore } from '@/stores' 
+import { watch } from 'vue'
+import { onMounted } from 'vue'
+import commentInput from '@/components/community/commentInput.vue'
+import { ElMessage } from 'element-plus'
+const userStore = useUserStore()
+const token = userStore.basicUser.token
+const isPostDetailDrawer = ref(false)
+const openPostDetailDrawer = () => {
+  isPostDetailDrawer.value = true
+}
+const commentList = ref([])
+const commentListPage = ref(0)
+const getFirstCommentList = async () => {
+  const res = await getFirstCommentService(
+    token,
+    props.message.postInfo.postId,
+    commentListPage.value
+  )
+  commentList.value = res.data.data.returnList
+  showInputs.value = commentList.value.map(() => false)
+  showSecondComment.value = commentList.value.map(() => false)
+}
+onMounted(() => {
+  watch(
+    () => props.message.postInfo,
+    (newValue) => {
+      if (newValue.postId) {
+        getFirstCommentList()
+      }
+      if (newValue.postPictures) {
+        postPictures.value = [] 
+        for (let i = 0; i < props.message.postInfo.postPictures.length; i++) {
+          if (props.message.postInfo.postPictures[i] !== null) {
+            postPictures.value.push(props.message.postInfo.postPictures[i])
+          }
+        }
+      }
+    }
+  )
+})
+const showInputs = ref([])
+function toggleCommentInput(index) {
+  showInputs.value[index] = !showInputs.value[index]
+}
+const updateCommend = (id) => {
+  if (id === 1) {
+    getFirstCommentList()
+  }
+}
+const secondCommentPage = ref(0)
+const secondCommentList = ref([])
+const showSecondComment = ref([])
+const getSecondCommentList = async (firstLevelCommentId) => {
+  const res = await getSecondCommentService(
+    token,
+    secondCommentPage.value,
+    firstLevelCommentId
+  )
+  if (res.data.data.returnList.length === 0) {
+    ElMessage.warning('暂无回复！')
+    return
+  }
+  secondCommentList.value = res.data.data.returnList
+}
+const openSecondCommend = (firstLevelCommentId, index) => {
+  secondCommentList.value = [] 
+  for (let i = 0; i < showSecondComment.value.length; i++) {
+    if (i !== index) {
+      showSecondComment.value[i] = false
+    }
+  }
+  showSecondComment.value[index] = !showSecondComment.value[index]
+  getSecondCommentList(firstLevelCommentId)
+}
+const openSecondCommendButton = ref(null)
+const likeFirstComment = async (CommentId) => {
+  const res = await likeCommentService(token, CommentId)
+  ElMessage.success(res.data.msg)
+  getFirstCommentList()
+}
+const likeSecondComment = async (CommentId) => {
+  const res = await likeCommentService(token, CommentId)
+  ElMessage.success(res.data.msg)
+}
+const props = defineProps({
+  message: Object
+})
+const postPictures = ref([])
+defineExpose({
+  openPostDetailDrawer
+})
+</script>
+<template>
+  <el-drawer v-model="isPostDetailDrawer" :with-header="false" size="40%">
+    <div class="container">
+      <!-- 顶部标题 -->
+      <div class="topTitle">
+        <span>{{ props.message.postInfo.postTitle }}</span>
+      </div>
+      <!-- 帖子时间 -->
+      <div class="postTime">
+        <span>{{ props.message.postInfo.postTime }}</span>
+      </div>
+      <!-- 帖子内容-->
+      <div class="postContent">
+        <span v-html="props.message.postInfo.postContent"></span>
+      </div>
+      <!-- 帖子配图-->
+      <div class="postPictures" style="margin: 50px 0">
+        <img
+          v-for="(item, index) in postPictures"
+          :key="index"
+          :src="item"
+          alt="帖子配图"
+          style="width: 170px; height: 170px; border-radius: 8px; margin: 10px"
+        />
+      </div>
+      <!-- 帖子底部 -->
+      <div class="bottom">
+        <div class="postUserAvatar">
+          <img
+            :src="props.message.postUserInfo.postUserAvatar"
+            alt="贴主头像"
+          />
+          <span>{{ props.message.postUserInfo.postUserNickname }}</span>
+        </div>
+        <div class="likeBox">
+          <li><img src="@/assets/分享.png" alt="" /><span>转发</span></li>
+          <li>
+            <img src="@/assets/爱心2.png" alt="" /><span>{{
+              props.message.likeAndCommentInfo.postLikeNum
+            }}</span>
+          </li>
+        </div>
+      </div>
+      <!-- 评论区域 -->
+      <div class="commentBox" style="margin-top: 30px">
+        <commentInput
+          :message="props.message.postInfo.postId"
+          @updateCommend="updateCommend"
+        ></commentInput>
+      </div>
+      <el-divider />
+      <div class="commentList">
+        <div
+          class="commentItem"
+          v-for="(item, index) in commentList"
+          :key="item.postFirstLevelCommentInfo.firstLevelCommentId"
+        >
+          <div class="postAvatar">
+            <img
+              :src="item.postFirstLevelCommentUserInfo.avatar"
+              alt="一级评论用户头像"
+            />
+          </div>
+          <div class="firstCommentContent">
+            <span style="color: #6a7c92">{{
+              item.postFirstLevelCommentUserInfo.nickname
+            }}</span>
+            <span>{{ item.postFirstLevelCommentInfo.commentContent }}</span>
+            <div class="firstCommentContentBottom">
+              <span style="color: #96a2b6; font-size: 14px">{{
+                item.postFirstLevelCommentInfo.commentPostTime
+              }}</span>
+              <div style="display: flex">
+                <span style="display: flex">
+                  <img
+                    style="width: 30px; cursor: pointer"
+                    src="@/assets/like.png"
+                    alt="一级评论点赞个数"
+                    @click="
+                      likeFirstComment(
+                        item.postFirstLevelCommentInfo.firstLevelCommentId
+                      )
+                    "
+                  /><span style="margin-right: 10px">{{
+                    item.firstLevelCommentLikeInfo.firstCommentLikeNum
+                  }}</span>
+                </span>
+                <el-button
+                  text
+                  type="primary"
+                  @click="toggleCommentInput(index)"
+                  >回复</el-button
+                >
+                <el-button
+                  text
+                  type="primary"
+                  ref="openSecondCommendButton"
+                  @click="
+                    openSecondCommend(
+                      item.postFirstLevelCommentInfo.firstLevelCommentId,
+                      index
+                    )
+                  "
+                  >展开</el-button
+                >
+              </div>
+            </div>
+            <div class="replayFirstComment" v-show="showInputs[index]">
+              <commentInput
+                :message="props.message.postInfo.postId"
+                :firstCommendId="
+                  item.postFirstLevelCommentInfo.firstLevelCommentId
+                "
+              ></commentInput>
+            </div>
+            <div v-show="showSecondComment[index]">
+              <div
+                class="secondCommentContent"
+                v-for="item in secondCommentList"
+                :key="item.postSecondLevelCommentInfo.secondLevelCommentId"
+              >
+                <div class="secondCommendAvatar">
+                  <img
+                    :src="item.postSecondLevelCommentUserInfo.avatar"
+                    alt="二级评论用户头像"
+                  />
+                </div>
+                <div class="secondCommendContent">
+                  <span style="color: #6a7c92">{{
+                    item.postSecondLevelCommentUserInfo.nickname
+                  }}</span>
+                  <span>{{
+                    item.postSecondLevelCommentInfo.commentContent
+                  }}</span>
+                  <div class="secondCommentContentBottom">
+                    <span style="color: #96a2b6; font-size: 14px">{{
+                      item.postSecondLevelCommentInfo.commentPostTime
+                    }}</span>
+                    <span style="display: flex">
+                      <img
+                        style="width: 30px; cursor: pointer"
+                        src="@/assets/like.png"
+                        alt="二级评论点赞个数"
+                        @click="
+                          likeSecondComment(
+                            item.postSecondLevelCommentInfo.secondLevelCommentId
+                          )
+                        "
+                      />
+                      <span style="margin-right: 10px">{{
+                        item.secondLevelCommentLikeInfo.secondCommentLikeNum
+                      }}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </el-drawer>
+</template>
+<style scoped>
+li {
+  list-style: none;
+}
+.container {
+  min-height: 798px;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(#d6f7ff, #fdfae8);
+  box-sizing: border-box;
+  padding: 15px 20px;
+  border-radius: 8px;
+}
+.topTitle {
+  height: 50px;
+  font-size: 25px;
+  display: flex;
+  align-items: center;
+}
+.postTime {
+  color: #b2b2b2;
+}
+.bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.postUserAvatar {
+  display: flex;
+  align-items: center;
+}
+.postUserAvatar img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #b2b2b2;
+  margin-right: 10px;
+}
+.likeBox {
+  display: flex;
+  align-items: center;
+}
+.likeBox li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 20px;
+  cursor: pointer;
+}
+.likeBox li img {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 5px;
+}
+.commentList {
+  margin-top: 10px;
+}
+.commentItem {
+  margin-top: 10px;
+  display: flex;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.postAvatar img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #b2b2b2;
+  margin-right: 10px;
+}
+.firstCommentContent {
+  display: flex;
+  width: 70%;
+  flex-direction: column;
+}
+.firstCommentContent span {
+  margin: 4px 0;
+}
+.firstCommentContentBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.secondCommentContent {
+  display: flex;
+  margin-top: 10px;
+}
+.secondCommendAvatar img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #b2b2b2;
+  margin-right: 10px;
+}
+.secondCommendContent {
+  display: flex;
+  flex-direction: column;
+}
+.secondCommentContentBottom {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
+<script setup>
+import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import {
+  commentFirstPostService, 
+  commentSecondPostService 
+} from '@/api/userCommunity.js'
+import { useUserStore } from '@/stores' 
+const userStore = useUserStore()
+const token = userStore.basicUser.token
+const isFocused = ref(false)
+const row = ref(1)
+const inputStyle = computed(() => {
+  return {
+    height: isFocused.value ? '115px' : '40px',
+    transition: 'height 0.1s'
+  }
+})
+const handleFocus = () => {
+  isFocused.value = true
+  row.value = 5
+}
+const handleBlur = () => {
+  isFocused.value = false
+  row.value = 1
+}
+const props = defineProps({
+  message: Number,
+  firstCommendId: Number
+})
+const emit = defineEmits(['updateCommend'])
+const commentContent = ref('')
+const submitFirstComment = async () => {
+  if (props.message && props.firstCommendId) {
+    if (commentContent.value.trim() === '') {
+      ElMessage.warning('评论内容不能为空')
+      return
+    }
+    const res = await commentSecondPostService(
+      token,
+      props.message,
+      props.firstCommendId,
+      commentContent.value
+    )
+    if (userStore.isNew) {
+      userStore.setIsRefreshNewPost()
+    } else {
+      userStore.setIsRefreshHotPost()
+    }
+    ElMessage.success(res.data.msg)
+    commentContent.value = '' 
+  } else {
+    if (commentContent.value.trim() === '') {
+      ElMessage.warning('评论内容不能为空')
+      return
+    }
+    const res = await commentFirstPostService(
+      token,
+      props.message,
+      commentContent.value
+    )
+    if (userStore.isNew) {
+      userStore.setIsRefreshNewPost()
+    } else {
+      userStore.setIsRefreshHotPost()
+    }
+    ElMessage.success(res.data.msg)
+    commentContent.value = '' 
+    emit('updateCommend', 1)
+  }
+}
+</script>
+<template>
+  <div class="commentBox">
+    <el-input
+      placeholder="请输入你的评论内容哦！"
+      v-model="commentContent"
+      clearable
+      size="large"
+      style="width: 70%"
+      class="commentInput"
+      type="textarea"
+      resize="none"
+      :rows="row"
+      :style="inputStyle"
+      @focus="handleFocus"
+      @blur="handleBlur"
+      @keydown.enter="
+        () => {
+          submitFirstComment()
+          handleBlur()
+        }
+      "
+    ></el-input>
+    <el-button
+      type="primary"
+      size="large"
+      style="margin-left: 10px"
+      @click="submitFirstComment"
+      >发表评论</el-button
+    >
+  </div>
+</template>
+<style scoped>
+.commentBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+.commentInput {
+  background-color: transparent;
+  margin-top: 8px;
+}
+.commentInput ::-webkit-scrollbar {
+  display: none;
+}
+</style>
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+export const useRecommendListStore = defineStore(
+  'big-user',
+  () => {
+    const isRefresh = ref(false)
+    const setIsRefresh = () => {
+      isRefresh.value = true
+    }
+    const outIsRefresh = () => {
+      isRefresh.value = false
+    }
+    return {
+      isRefresh,
+      setIsRefresh,
+      outIsRefresh
+    }
+  },
+  {
+    persist: {
+      enabled: true, 
+      storage: localStorage 
+    }
+  }
+)
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+export const useUserStore = defineStore(
+  'big-user',
+  () => {
+    const basicUser = ref({
+      uid: '',
+      token: '', 
+      userId: '',
+      nickname: '',
+      avatar: '',
+      subscriber: '',
+      signature: '' 
+    })
+    const isLogin = ref(false) 
+    const setIsLogin = () => {
+      isLogin.value = true
+    }
+    const outIsLogin = () => {
+      isLogin.value = false
+    }
+    const isLoginOut = ref(false) 
+    const setIsLoginOut = () => {
+      isLoginOut.value = true
+    }
+    const outIsLoginOut = () => {
+      isLoginOut.value = false
+    }
+    const isChangeAvatar = ref(false) 
+    const setIsChangeAvatar = () => {
+      isChangeAvatar.value = true
+    }
+    const outIsChangeAvatar = () => {
+      isChangeAvatar.value = false
+    }
+    const isRefreshNewPost = ref(false)
+    const setIsRefreshNewPost = () => {
+      isRefreshNewPost.value = true
+    }
+    const outIsRefreshNewPost = () => {
+      isRefreshNewPost.value = false
+    }
+    const isRefreshHotPost = ref(false)
+    const setIsRefreshHotPost = () => {
+      isRefreshHotPost.value = true
+    }
+    const outIsRefreshHotPost = () => {
+      isRefreshHotPost.value = false
+    }
+    const isNew = ref(true)
+    const setIsNew = () => {
+      isNew.value = true
+    }
+    const outIsNew = () => {
+      isNew.value = false
+    }
+    const defaultPage = ref('1-1')
+    const setDefaultPage = (page) => {
+      defaultPage.value = page
+    }
+    const setBasicUser = ({
+      uid,
+      token,
+      userId,
+      nickname,
+      avatar,
+      subscriber,
+      signature
+    }) => {
+      basicUser.value = {
+        ...basicUser.value,
+        uid,
+        token,
+        userId,
+        nickname,
+        avatar,
+        subscriber,
+        signature
+      }
+    }
+    const removeBasicUser = () => {
+      basicUser.value = {
+        uid: '',
+        token: '',
+        userId: '',
+        nickname: '',
+        avatar: '',
+        subscriber: '',
+        signature: ''
+      }
+      localStorage.removeItem('basicUser') 
+    }
+    return {
+      basicUser,
+      setBasicUser,
+      removeBasicUser,
+      isLogin,
+      setIsLogin,
+      outIsLogin,
+      isLoginOut,
+      setIsLoginOut,
+      outIsLoginOut,
+      isChangeAvatar,
+      setIsChangeAvatar,
+      outIsChangeAvatar,
+      defaultPage,
+      setDefaultPage,
+      isRefreshNewPost,
+      setIsRefreshNewPost,
+      outIsRefreshNewPost,
+      isRefreshHotPost,
+      setIsRefreshHotPost,
+      outIsRefreshHotPost,
+      isNew,
+      setIsNew,
+      outIsNew
+    }
+  },
+  {
+    persist: {
+      enabled: true, 
+      storage: localStorage, 
+      restoreState: (storedState) => {
+        if (storedState) {
+          return storedState
+        } else {
+          return {
+            basicUser: {
+              uid: '',
+              token: '',
+              userId: '',
+              nickname: '',
+              avatar: '',
+              subscriber: '',
+              signature: ''
+            }
+          }
+        }
+      }
+    }
+  }
+)
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+export const useRecommendListStore = defineStore(
+  'big-user',
+  () => {
+    const recommendList = ref(null)
+    const setRecommendList = (list) => {
+      recommendList.value = list
+    }
+    return {
+      recommendList,
+      setRecommendList
+    }
+  },
+  {
+    persist: {
+      enabled: true, 
+      storage: localStorage 
+    }
+  }
+)
+<script setup></script>
+<template>
+  <router-view> </router-view>
+</template>
+<style scoped></style>
+import request from '@/utils/request'
+export const getNewPostService = (token, page) => {
+  return request.post(`/MirrorHeart/getPostsOrderByTime?page=${page}`, null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const getHotPostService = (token, page) => {
+  return request.post(`/MirrorHeart/getPostOrderByHot?page=${page}`, null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const getNewPostServiceVisitor = (page) => {
+  return request.get(`/MirrorHeart/GetLatestArticles?page=${page}`)
+}
+export const getHotPostServiceVisitor = (page) => {
+  return request.get(`/MirrorHeart/getHotPosts?page=${page}`)
+}
+export const getNewDiaryService = (token, page) => {
+  return request.post(`/MirrorHeart/getDiaryByTime?page=${page}`, null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const getNewDiaryServiceVisitor = (page) => {
+  return request.get(`/MirrorHeart/getLatestDiary?page=${page}`)
+}
+export const submitPostService = (token, data) => {
+  return request.post('/MirrorHeart/post', data, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const getPostDetailService = (token, postId) => {
+  return request.post(`/MirrorHeart/getPostInfo?postId=${postId}`, null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const commentFirstPostService = (token, postId, content) => {
+  return request.post(
+    '/MirrorHeart/postFirstLevelComment',
+    { postId, content },
+    {
+      headers: {
+        Authorization: token
+      }
+    }
+  )
+}
+export const getFirstCommentService = (token, postId, page) => {
+  return request.post(
+    `/MirrorHeart/getPostCommentSection?postId=${postId}&&page=${page}`,
+    null,
+    {
+      headers: {
+        Authorization: token
+      }
+    }
+  )
+}
+export const commentSecondPostService = (
+  token,
+  postId,
+  replyFirstLevelCommentId,
+  content
+) => {
+  return request.post(
+    '/MirrorHeart/postSecondLevelComment',
+    { postId, replyFirstLevelCommentId, content },
+    {
+      headers: {
+        Authorization: token
+      }
+    }
+  )
+}
+export const getSecondCommentService = (token, page, firstLevelCommentId) => {
+  return request.post(
+    `/MirrorHeart/getSecondLevelComments?page=${page}&&firstLevelCommentId=${firstLevelCommentId}`,
+    null,
+    {
+      headers: {
+        Authorization: token
+      }
+    }
+  )
+}
+export const likePostService = (token, postId) => {
+  return request.post(`/MirrorHeart/likePost?postId=${postId}`, null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const likeCommentService = (token, commentId) => {
+  return request.post(`/MirrorHeart/likeComment?commentId=${commentId}`, null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+import request from '@/utils/request'
+export const getUserBasicInfoService = (token) => {
+  return request.post('/MirrorHeart/getUserInfo', null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const postUserBasicInfoService = (token, data) => {
+  return request.post('/MirrorHeart/updateUserInfo', data, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const postUserPasswordService = (
+  token,
+  uid,
+  oldPassword,
+  newPassword
+) => {
+  return request.post(
+    '/MirrorHeart/resetPasswordByPWD',
+    {
+      uid,
+      oldPassword,
+      newPassword
+    },
+    {
+      headers: {
+        Authorization: token
+      }
+    }
+  )
+}
+export const postUserAvatarService = (token, formData) => {
+  return request.post('/MirrorHeart/changeAvatar', formData, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const getLogoutCodeService = (phoneNum) => {
+  return request.post('/MirrorHeart/sendClaerUserSMSCode', {
+    phoneNum
+  })
+}
+export const postLogoutService = (phoneNum, smsCode) => {
+  return request.post('/MirrorHeart/clearBySMSCode', {
+    phoneNum,
+    smsCode
+  })
+}
+export const postLogoutByPasswordService = (phoneNum, password) => {
+  return request.post('/MirrorHeart/clearByPassword', {
+    phoneNum,
+    password
+  })
+}
+import request from '@/utils/request'
+export const userGetRegisterCodeService = ({ phoneNum }) =>
+  request.post('/MirrorHeart/sendSignUpSMS', { phoneNum })
+export const userRegisterService = ({ phoneNum, password, smsCode }) =>
+  request.post('/MirrorHeart/signUpBySMS', { phoneNum, password, smsCode })
+export const userCodeLoginService = ({ phoneNum, password }) =>
+  request.post('/MirrorHeart/loginByPassword', { phoneNum, password })
+export const userGetLoginCodeService = ({ phoneNum }) =>
+  request.post('/MirrorHeart/sendLoginSMS', { phoneNum })
+export const userMsgLoginService = ({ phoneNum, smsCode }) =>
+  request.post('/MirrorHeart/loginBySMS', { phoneNum, smsCode })
+export const userGetForgetPwdCodeService = ({ phoneNum }) =>
+  request.post('/MirrorHeart/sendResetPasswordSMS', { phoneNum })
+export const userResetPwdService = ({ phoneNum, newPassword, smsCode }) =>
+  request.post('/MirrorHeart/resetPasswordBySMS', {
+    phoneNum,
+    newPassword,
+    smsCode
+  })
+export const userLogoutService = (token) => {
+  return request.post('/MirrorHeart/logout', null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+import request from '@/utils/request'
+export const getRecommendListService = (token, selectedDay) => {
+  return request.post(
+    '/MirrorHeart/getDailyRecommendation',
+    { selectedDay },
+    {
+      headers: {
+        Authorization: token
+      }
+    }
+  )
+}
+export const getRecommendListServiceForVisitor = () => {
+  return request.get('/MirrorHeart/getFirstPageInfo')
+}
+export const getDailyQuestionService = (token) => {
+  return request.post('/MirrorHeart/getQuestion', null, {
+    headers: {
+      Authorization: token
+    }
+  })
+}
+export const submitDailyQuestionService = (token, answer) => {
+  return request.post(
+    '/MirrorHeart/submitQuestionAnswer',
+    { answer },
+    {
+      headers: {
+        Authorization: token
+      }
+    }
+  )
+}
+export const likeRecommendService = (token, type) => {
+  return request.post(
+    '/MirrorHeart/likeAndCancelLike',
+    { type },
+    {
+      headers: {
+        Authorization: token
+      }
+    }
+  )
+}
