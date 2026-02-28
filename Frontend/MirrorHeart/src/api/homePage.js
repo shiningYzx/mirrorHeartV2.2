@@ -65,9 +65,6 @@ export const getContentDetailService = (id) => {
   return request.get(`/content/${id}`)
 }
 
-export const addQuestionService = (text, topic) => {
-  return request.post('/question/add', { text, topic })
-}
 
 export const getQuestionAnswersService = (questionId, pageNo, pageSize) => {
   return request.get(`/question/userDailyRecord/${questionId}/answers`, {

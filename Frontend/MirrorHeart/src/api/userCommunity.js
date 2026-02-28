@@ -36,25 +36,6 @@ export const getHotPostServiceVisitor = (page) => {
   })
 }
 
-export const getNewDiaryService = (page) => {
-  return request.get('/post/list', {
-    params: {
-      pageNo: page,
-      pageSize: 10,
-      type: 'diary'
-    }
-  })
-}
-
-export const getNewDiaryServiceVisitor = (page) => {
-  return request.get('/post/list', {
-    params: {
-      pageNo: page,
-      pageSize: 10,
-      type: 'diary'
-    }
-  })
-}
 
 export const submitPostService = (data) => {
   return request.post('/post/publish', data, {
@@ -165,7 +146,7 @@ export const searchUsersService = (keyword, page) => {
 }
 
 export const toggleFollowService = (targetUserId) => {
-  return request.post(`/interaction/follow/${targetUserId}`)
+  return request.post('/interaction/follow', { targetUserId })
 }
 
 export const getUserFollowingService = (userId, pageNo, pageSize) => {
