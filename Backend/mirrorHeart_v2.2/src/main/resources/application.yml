@@ -10,7 +10,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/mirrot_heart_v2_2?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: YOUR_DATABASE_PASSWORD
+    password: Yzx030927
 
   # Redis 配置
   data:
@@ -29,8 +29,8 @@ spring:
   mail:
     host: smtp.qq.com
     port: 465
-    username: YOUR_QQ_EMAIL
-    password: YOUR_QQ_EMAIL_AUTH_CODE
+    username: 2017314972@qq.com
+    password: rapcuskwfbqdbdjj
     protocol: smtps
     properties:
       mail:
@@ -63,9 +63,9 @@ file:
 # 讯飞星火大模型配置
 xfyun:
   spark:
-    app-id: YOUR_XFYUN_APP_ID
-    api-key: YOUR_XFYUN_API_KEY
-    api-secret: YOUR_XFYUN_API_SECRET
+    app-id: e734e96f
+    api-key: 917c9d5a2c54e9383146cbef18c57e98
+    api-secret: NjYyN2E1NmY0MTkxYWM2ZWEyZGZkYTZl
     host-url: wss://spark-api.xf-yun.com/x2
     domain: spark-x
 
