@@ -272,6 +272,41 @@ CREATE TABLE IF NOT EXISTS `content_movie` (
 
 USE mirrot_heart_v2_2;
 
+-- =========================
+-- 5) Daily Recommendation (每日推荐)
+-- =========================
+
+-- [每日推荐主表]
+-- 记录系统每天为用户生成的推荐批次。
+-- 这里的 strategy 字段可用于 A/B 测试不同的推荐算法。
+CREATE TABLE IF NOT EXISTS `daily_recommendation` (
+  `id`           BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  `user_id`      BIGINT UNSIGNED NOT NULL,
+  `day`          DATE NOT NULL COMMENT '推荐日期',
+  `strategy`     VARCHAR(32) NOT NULL DEFAULT 'default' COMMENT '推荐策略/算法版本',
+  `viewed_at`    DATETIME(3) NULL COMMENT '用户查看时间，为空表示未读',
+  `created_at`   DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+  UNIQUE KEY `uk_daily_user_day` (`user_id`, `day`),
+  CONSTRAINT `fk_daily_user` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日推荐记录';
+
+ALTER TABLE `daily_recommendation` DROP FOREIGN KEY `fk_daily_user`;
+
+-- [每日推荐明细表]
+-- 关联推荐批次与具体的内容ID。
+-- rank 字段决定了用户看到的卡片顺序。
+CREATE TABLE IF NOT EXISTS `daily_recommendation_item` (
+  `id`         BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  `daily_id`   BIGINT UNSIGNED NOT NULL,
+  `content_id` BIGINT UNSIGNED NOT NULL COMMENT '关联content表',
+  `rank`       INT NOT NULL DEFAULT 1 COMMENT '排序权重',
+
+  KEY `idx_item_daily` (`daily_id`),
+  CONSTRAINT `fk_item_daily` FOREIGN KEY (`daily_id`) REFERENCES `daily_recommendation`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_item_content` FOREIGN KEY (`content_id`) REFERENCES `content`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='推荐内容详情';
+
 -- ---------------------------------------------------
 -- 0. 迁移前准备：清空 V3 相关表的数据
 -- (使用 SET FOREIGN_KEY_CHECKS = 0 配合 DELETE FROM 绕过 InnoDB 外键强校验)
@@ -440,42 +475,6 @@ FROM mirror_heart.sentences;
 -- 所有类型的旧内容已经完美融入 V3 架构的内容主表与子表中，互不干扰。
 -- ==========================================================
 
-
-
--- =========================
--- 5) Daily Recommendation (每日推荐)
--- =========================
-
--- [每日推荐主表]
--- 记录系统每天为用户生成的推荐批次。
--- 这里的 strategy 字段可用于 A/B 测试不同的推荐算法。
-CREATE TABLE IF NOT EXISTS `daily_recommendation` (
-  `id`           BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  `user_id`      BIGINT UNSIGNED NOT NULL,
-  `day`          DATE NOT NULL COMMENT '推荐日期',
-  `strategy`     VARCHAR(32) NOT NULL DEFAULT 'default' COMMENT '推荐策略/算法版本',
-  `viewed_at`    DATETIME(3) NULL COMMENT '用户查看时间，为空表示未读',
-  `created_at`   DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-  UNIQUE KEY `uk_daily_user_day` (`user_id`, `day`),
-  CONSTRAINT `fk_daily_user` FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日推荐记录';
-
-ALTER TABLE `daily_recommendation` DROP FOREIGN KEY `fk_daily_user`;
-
--- [每日推荐明细表]
--- 关联推荐批次与具体的内容ID。
--- rank 字段决定了用户看到的卡片顺序。
-CREATE TABLE IF NOT EXISTS `daily_recommendation_item` (
-  `id`         BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  `daily_id`   BIGINT UNSIGNED NOT NULL,
-  `content_id` BIGINT UNSIGNED NOT NULL COMMENT '关联content表',
-  `rank`       INT NOT NULL DEFAULT 1 COMMENT '排序权重',
-
-  KEY `idx_item_daily` (`daily_id`),
-  CONSTRAINT `fk_item_daily` FOREIGN KEY (`daily_id`) REFERENCES `daily_recommendation`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_item_content` FOREIGN KEY (`content_id`) REFERENCES `content`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='推荐内容详情';
 
 
 -- =========================
@@ -667,7 +666,7 @@ CREATE TABLE IF NOT EXISTS `user_daily_record` (
   `user_id`     BIGINT UNSIGNED NOT NULL,
   `day`         DATE NOT NULL COMMENT '日期',
   `question_id` BIGINT UNSIGNED NOT NULL COMMENT '当日推送的问题ID',
-  `answer_text` TEXT DEFAULT NULL COMMENT '文本回答内容'，
+  `answer_text` TEXT DEFAULT NULL COMMENT '文本回答内容',
   
   -- 回答相关字段 (NULL表示未回答)
   `audio_url`   VARCHAR(512) NULL COMMENT '回答语音',
